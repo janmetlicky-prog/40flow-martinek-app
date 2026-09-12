@@ -448,7 +448,7 @@ async function showApp() {
   $("#user-label").textContent = session.label;
   $("#import-onb").hidden = session.role !== "admin";
   if (!Storage.hasToken()) {
-    showError(new Error("Chybí přístupový token k datům — nastavte ho tlačítkem „Nastavit token"."));
+    showError(new Error("Chybí přístupový token k datům — nastavte ho tlačítkem ‚Nastavit token'."));
     return;
   }
   await loadAndRender();

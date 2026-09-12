@@ -41,7 +41,7 @@ class GitHubStorage {
     let t = null;
     try { t = localStorage.getItem(TOKEN_KEY); } catch { /* noop */ }
     if (!t) throw new StorageError("chybi_token",
-      "Chybí přístupový token. Vložte ho tlačítkem „Nastavit token" vpravo nahoře.");
+      "Chybí přístupový token. Vložte ho tlačítkem ‚Nastavit token' vpravo nahoře.");
     return t;
   }
 
@@ -65,7 +65,7 @@ class GitHubStorage {
     }
     if (res.status === 404) return null;
     if (res.status === 401) throw new StorageError("neplatny_token",
-      "Token byl odmítnut. Nastavte platný token (tlačítko „Nastavit token").");
+      "Token byl odmítnut. Nastavte platný token (tlačítko ‚Nastavit token').");
     if (!res.ok) throw new StorageError("cteni_selhalo", `Čtení dat selhalo (${res.status}).`);
     const body = await res.json();
     this._sha[path] = body.sha;
@@ -87,7 +87,7 @@ class GitHubStorage {
       throw new StorageError("offline", "Uložení se nepodařilo — zkontrolujte internetové připojení. Změny zůstávají v prohlížeči, zkuste to znovu.");
     }
     if (res.status === 401) throw new StorageError("neplatny_token",
-      "Token byl odmítnut. Nastavte platný token (tlačítko „Nastavit token").");
+      "Token byl odmítnut. Nastavte platný token (tlačítko ‚Nastavit token').");
     if ((res.status === 409 || res.status === 422) && retry) {
       // konflikt verzí: někdo mezitím uložil — přenačíst SHA a zkusit jednou znovu
       await this._readFile(path);
