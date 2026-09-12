@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>40Flow — Přehled klientů</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Login -->
+  <div id="view-login" class="login-wrap" hidden>
+    <h2>40Flow Dashboard</h2>
+    <label for="login-user">Uživatel</label>
+    <input id="login-user" type="text" autocomplete="username">
+    <label for="login-pass">Heslo</label>
+    <input id="login-pass" type="password" autocomplete="current-password">
+    <button id="login-btn">Přihlásit</button>
+    <div id="login-error" class="login-error"></div>
+  </div>
+
+  <!-- App -->
+  <div id="view-app" hidden>
+    <header>
+      <div class="brand">
+        <span class="logo-mark">B</span>
+        <div>
+          <h1>Bohatněte s rozumem — Klienti</h1>
+          <div class="claim">Pomáháme lidem i firmám dělat chytrá finanční rozhodnutí.</div>
+        </div>
+      </div>
+      <div class="user-info">
+        <span id="user-label"></span>
+        <button id="token-btn">Nastavit token</button>
+        <button id="logout-btn">Odhlásit</button>
+      </div>
+    </header>
+    <div id="error-banner" class="data-unverified-banner" hidden style="margin:14px 28px"></div>
+    <main>
+      <!-- Seznam -->
+      <div id="view-list">
+        <div class="toolbar">
+          <input id="search" type="search" placeholder="Hledat podle jména, příjmení, firmy…">
+          <select id="filter-stav"><option value="">Stav — vše</option></select>
+          <select id="filter-obchodnik"><option value="">Obchodník — vše</option></select>
+          <select id="filter-product"><option value="">Produkt — vše</option></select>
+          <select id="filter-product-state" hidden><option value="">Stav produktu — vše</option></select>
+          <button id="import-onb" class="mode-toggle" hidden>Nahrát onboarding</button>
+          <input type="file" id="import-onb-file" accept=".json" hidden>
+          <span class="count" id="result-count"></span>
+        </div>
+        <table class="client-table">
+          <thead>
+            <tr>
+              <th>Klient</th><th>Firma</th><th>Stav</th><th>Obchodník</th>
+              <th>Život</th><th>Investice</th><th>Neživot</th><th>Úvěr</th><th>Úvěr byd.</th>
+            </tr>
+          </thead>
+          <tbody id="client-rows"></tbody>
+        </table>
+      </div>
+
+      <!-- Detail -->
+      <div id="view-detail" hidden></div>
+    </main>
+
+    <div id="save-bar" class="save-bar">
+      <span class="msg">Neuložené změny: <strong id="dirty-count">0</strong></span>
+      <button id="save-github">Uložit</button>
+      <button id="save-download" class="secondary">Stáhnout JSON</button>
+      <span id="save-status" class="save-status"></span>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

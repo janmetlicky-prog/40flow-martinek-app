@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bohatněte s rozumem — Vstupní dotazník</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="onb-wrap">
+    <div class="onb-header">
+      <span class="logo-mark">B</span>
+      <h1>Vstupní dotazník</h1>
+      <div class="claim">Pomáháme lidem i firmám dělat chytrá finanční rozhodnutí.</div>
+    </div>
+
+    <div class="onb-testdata-note">
+      ⚠ Testovací provoz — nevyplňujte skutečné osobní údaje. Formulář slouží k ověření procesu.
+    </div>
+
+    <div class="onb-testdata-note" id="draft-note" hidden>
+      Pokračujete v rozpracovaném vyplnění — údaje z minula jsou předvyplněné.
+    </div>
+
+    <div class="onb-progress" id="progress"></div>
+    <div class="onb-progress-label" id="progress-label"></div>
+
+    <form id="onb-form" novalidate>
+      <div id="steps"></div>
+      <div class="onb-nav">
+        <button type="button" class="prev" id="btn-prev">← Zpět</button>
+        <div>
+          <button type="button" class="prev" id="btn-save-draft">Uložit a dokončit později</button>
+          <button type="button" class="next" id="btn-next">Pokračovat →</button>
+        </div>
+      </div>
+      <div class="onb-progress-label" id="draft-status" style="margin-top:10px"></div>
+    </form>
+
+    <div class="onb-done" id="done" hidden>
+      <span class="logo-mark">✓</span>
+      <h2>Děkujeme, máme vše potřebné</h2>
+      <p id="done-hint">Stáhněte si soubor s údaji a pošlete ho svému poradci (odpovědí na e-mail s odkazem).</p>
+      <button id="btn-save-storage" hidden>Uložit do systému</button>
+      <button id="btn-download">Stáhnout soubor pro poradce</button>
+      <div class="onb-progress-label" id="save-result" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/onboarding.js"></script>
+</body>
+</html>
