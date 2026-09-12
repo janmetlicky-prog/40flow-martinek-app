@@ -355,20 +355,43 @@ function updateSaveBar() {
 async function saveAll() {
   const status = $("#save-status");
   status.textContent = "Ukládám…";
+  let indexVaroval = false;
   try {
     for (const id of [...dirty]) {
       const c = CLIENTS.get(id);
       if (!c) { dirty.delete(id); continue; }
-      await Storage.saveClient(c, session.user);
+      try {
+        await Storage.saveClient(c, session.user);
+      } catch (err) {
+        if (err.kod === "index_neaktualizovan") { indexVaroval = true; }
+        else throw err;
+      }
       dirty.delete(id);
-      // aktualizovat řádek v indexu i lokálně
-      const i = INDEX.findIndex((k) => k.id === id);
-      const entry = indexEntry(c);
-      if (i >= 0) INDEX[i] = entry; else INDEX.push(entry);
     }
+    // přehled přenačíst z úložiště — sedí i po zápisech z jiného tabu
+    try { INDEX = await Storage.listClients(); } catch { /* banner níže řeší index */ }
     updateSaveBar();
     renderList();
-    status.textContent = "Uloženo ✓";
+    if (indexVaroval) {
+      showError(new Error("Klient uložen, přehled se nepodařilo aktualizovat — obnovte stránku."));
+      status.textContent = "";
+    } else {
+      status.textContent = "Uloženo ✓";
+    }
+  } catch (err) {
+    status.textContent = "";
+    showError(err);
+  }
+}
+
+async function rebuildIndex() {
+  const status = $("#save-status");
+  status.textContent = "Přegenerovávám přehled…";
+  try {
+    INDEX = await Storage.rebuildIndex();
+    initFilters();
+    renderList();
+    status.textContent = "Přehled přegenerován ✓";
   } catch (err) {
     status.textContent = "";
     showError(err);
@@ -447,6 +470,7 @@ async function showApp() {
   $("#view-app").hidden = false;
   $("#user-label").textContent = session.label;
   $("#import-onb").hidden = session.role !== "admin";
+  $("#rebuild-index").hidden = session.role !== "admin";
   if (!Storage.hasToken()) {
     showError(new Error("Chybí přístupový token k datům — nastavte ho tlačítkem ‚Nastavit token'."));
     return;
@@ -474,6 +498,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   $("#save-github").addEventListener("click", saveAll);
   $("#save-download").addEventListener("click", downloadJson);
+  $("#rebuild-index").addEventListener("click", rebuildIndex);
   $("#import-onb").addEventListener("click", () => $("#import-onb-file").click());
   $("#import-onb-file").addEventListener("change", (e) => {
     if (e.target.files[0]) importOnboarding(e.target.files[0]);

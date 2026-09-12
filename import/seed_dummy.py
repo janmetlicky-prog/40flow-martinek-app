@@ -136,15 +136,59 @@ def index_entry(c):
     }
 
 
+def push_to_repo():
+    """Nahraje data do datového repa přes GitHub API.
+
+    Token se čte VÝHRADNĚ z proměnné prostředí GITHUB_TOKEN — nikdy ho
+    nezapisovat do souborů projektu.
+    """
+    import base64
+    import os
+    import urllib.request
+
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        raise SystemExit("Chybí GITHUB_TOKEN. Spusť: GITHUB_TOKEN=... python3 import/seed_dummy.py --push")
+
+    repo = "janmetlicky-prog/40flow-martinek"
+    soubory = sorted(CLIENTS_DIR.glob("*.json")) + [ROOT / "data" / "index.json"]
+    for f in soubory:
+        cesta = f"data/{f.relative_to(ROOT / 'data')}"
+        url = f"https://api.github.com/repos/{repo}/contents/{cesta}"
+        hdrs = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
+        # existující SHA (pro přepis)
+        sha = None
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=hdrs)) as r:
+                sha = json.load(r).get("sha")
+        except Exception:
+            pass
+        payload = {
+            "message": f"Seed testovacích dat — {cesta}",
+            "content": base64.b64encode(f.read_bytes()).decode(),
+        }
+        if sha:
+            payload["sha"] = sha
+        req = urllib.request.Request(url, method="PUT", headers=hdrs,
+                                     data=json.dumps(payload).encode())
+        with urllib.request.urlopen(req) as r:
+            r.read()
+        print(f"  push: {cesta}")
+
+
 def main():
+    import sys
     CLIENTS_DIR.mkdir(parents=True, exist_ok=True)
     for c in KLIENTI:
         (CLIENTS_DIR / f"{c['id']}.json").write_text(
             json.dumps(c, ensure_ascii=False, indent=2), encoding="utf-8")
+    # index se generuje VŽDY spolu s klienty ze stejných dat — nemůže se rozjet
     index = {"klienti": [index_entry(c) for c in KLIENTI]}
     (ROOT / "data" / "index.json").write_text(
         json.dumps(index, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Vygenerováno {len(KLIENTI)} testovacích klientů → data/clients/ + data/index.json")
+    if "--push" in sys.argv:
+        push_to_repo()
 
 
 if __name__ == "__main__":

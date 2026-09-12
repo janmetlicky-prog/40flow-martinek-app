@@ -53,6 +53,8 @@ Opakovaně spustitelný — před přepsáním zazálohuje stávající `data/cl
 
 ## Přihlášení
 
+> Login `petr` / `martinek2026` je **testovací placeholder** — v ostré verzi ho nahradí back-end autentizace (serverová). Přístupový token k datům žije výhradně v localStorage prohlížeče; není v URL, není v kódu, není v repu.
+
 Dvě úrovně (v1): `petr` (admin) a `tym` (uživatel). Hesla v `js/config.js` jako SHA-256 hash — výchozí hesla `martinek2026` / `tym2026`, **před nasazením změnit** (návod v komentáři config.js).
 
 Pozn.: klientská autentizace na statickém hostingu chrání proti náhodnému přístupu, ne proti cílenému útoku. Repo musí zůstat privátní; plné role přijdou v další fázi.

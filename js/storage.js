@@ -120,17 +120,54 @@ class GitHubStorage {
       `data/clients/${client.id}.json`, client,
       `Klient ${client.jmeno} ${client.prijmeni} (${client.id}) — ${kdo}`,
     );
-    await this._updateIndex(client);
+    try {
+      await this._updateIndex(client);
+    } catch {
+      throw new StorageError("index_neaktualizovan",
+        "Klient uložen, přehled se nepodařilo aktualizovat — obnovte stránku.");
+    }
   }
 
-  async _updateIndex(client) {
-    if (!this._indexCache) await this.listClients();
+  /**
+   * Aktualizace přehledu: index se vždy ČERSTVĚ načte z úložiště a nahradí se
+   * jen položka ukládaného klienta — zápis ze zastaralého tabu tak nepřepíše
+   * změny kolegů. Při konfliktu (souběžný zápis) celé čtení+merge 1× zopakovat.
+   */
+  async _updateIndex(client, retry = true) {
+    const index = (await this._readFile("data/index.json")) || { klienti: [] };
     const souhrn = indexEntry(client);
-    const list = this._indexCache.klienti;
-    const i = list.findIndex((k) => k.id === client.id);
-    if (i >= 0) list[i] = souhrn; else list.push(souhrn);
-    await this._writeFile("data/index.json", this._indexCache,
-      `Index — ${client.id}`);
+    const i = index.klienti.findIndex((k) => k.id === client.id);
+    if (i >= 0) index.klienti[i] = souhrn; else index.klienti.push(souhrn);
+    this._indexCache = index;
+    try {
+      await this._writeFile("data/index.json", index, `Index — ${client.id}`, false);
+    } catch (err) {
+      if (err.kod === "konflikt" && retry) return this._updateIndex(client, false);
+      throw err;
+    }
+  }
+
+  /** Záchrana: postaví index znovu ze všech souborů v data/clients/. */
+  async rebuildIndex() {
+    let res;
+    try {
+      res = await fetch(`${this._api("data/clients")}?ref=${this.branch}&t=${Date.now()}`, { headers: this._headers() });
+    } catch {
+      throw new StorageError("offline", "Nelze se připojit — zkontrolujte internetové připojení.");
+    }
+    if (!res.ok) throw new StorageError("cteni_selhalo", `Výpis klientů selhal (${res.status}).`);
+    const files = (await res.json()).filter((f) => f.name.endsWith(".json"));
+    const klienti = [];
+    for (const f of files) {
+      const c = await this._readFile(`data/clients/${f.name}`);
+      if (c && c.id) klienti.push(indexEntry(c));
+    }
+    klienti.sort((a, b) => a.id.localeCompare(b.id));
+    const index = { klienti };
+    await this._readFile("data/index.json"); // čerstvé SHA pro přepis
+    await this._writeFile("data/index.json", index, "Přegenerování přehledu");
+    this._indexCache = index;
+    return klienti;
   }
 }
 
