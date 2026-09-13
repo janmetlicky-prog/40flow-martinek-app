@@ -373,6 +373,9 @@ async function saveToStorage() {
         poradce: {}, komentare: [], schuzky: [], ida_url: "", cile: [],
       };
     }
+    // aktivní smlouvy rozřadit do produktových oblastí karty (config/oblasti.json)
+    const mapa = await nactiOblastiMapu();
+    rozradSmlouvy(client, record.onboarding.smlouvy, mapa);
     await Storage.saveClient(client, "onboarding");
     out.textContent = "Uloženo do systému ✓ — poradce údaje uvidí v přehledu klientů.";
   } catch (err) {

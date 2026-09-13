@@ -226,3 +226,11 @@ main { max-width: 1240px; margin: 0 auto; padding: 24px 28px; }
 .cil-row input { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
 .admin-section { margin-top: 28px; border-top: 1px dashed var(--border); padding-top: 12px; }
 .admin-section summary { font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); cursor: pointer; margin-bottom: 10px; }
+
+/* --- Položky oblastí, akce schůzek, splněné cíle ---------------------------- */
+.polozky-table input { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; }
+.polozky-table td { padding: 4px 6px; }
+.schuzka-akce { display: flex; gap: 8px; margin-top: 6px; }
+.schuzka-akce button { font-size: 11px; padding: 3px 10px; margin: 0; }
+.cil-row .cil-stav { padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; }
+.cil-row.cil-splneno input { text-decoration: line-through; color: var(--text-muted); }

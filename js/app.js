@@ -180,7 +180,8 @@ async function openDetail(id) {
   }
 }
 
-let expandedOblast = null; // rozbalený detail oblasti v kartě
+let expandedOblast = null;   // rozbalený detail oblasti v kartě
+let editovanaSchuzka = null; // index právě editované schůzky (null = nová)
 
 function fmtCas(iso) {
   if (!iso) return "";
@@ -191,8 +192,12 @@ function fmtCas(iso) {
 function renderDetail(c) {
   currentClientId = c.id;
 
-  const productRows = CONFIG.productFields.map((p) => {
-    const ob = c.oblasti[p.key] || { stav: "", faze: "", faze_historie: [], poznamka: "" };
+  // Oblast „Ostatní" vzniká rozřazením smluv, které nikam nepatří — zobrazit, pokud existuje
+  const oblastiSeznam = [...CONFIG.productFields];
+  if (c.oblasti && c.oblasti.ostatni) oblastiSeznam.push({ key: "ostatni", label: "Ostatní" });
+
+  const productRows = oblastiSeznam.map((p) => {
+    const ob = (c.oblasti && c.oblasti[p.key]) || { stav: "", faze: "", faze_historie: [], poznamka: "" };
     const buttons = CONFIG.productStates.map((s) => {
       const active = ob.stav === s;
       const style = active ? `style="background:${CONFIG.stateColors[s]}"` : "";
@@ -210,12 +215,26 @@ function renderDetail(c) {
       const historie = (ob.faze_historie || []).slice().reverse().map((h) =>
         `<div class="faze-hist-row"><span>${esc(h.faze)}</span><span class="muted-small">${fmtCas(h.kdy)} · ${esc(h.kdo || "")}</span></div>`).join("")
         || `<div class="muted-small">Zatím žádná změna fáze.</div>`;
+      const polozky = (ob.polozky || []).map((pol, i) => `
+        <tr class="polozka-row" data-oblast="${p.key}" data-idx="${i}">
+          <td><input class="pol-typ" value="${esc(pol.typ)}" placeholder="typ"></td>
+          <td><input class="pol-instituce" value="${esc(pol.instituce)}" placeholder="instituce"></td>
+          <td><input class="pol-platba" value="${esc(pol.mesicni_platba)}" placeholder="Kč/měs" inputmode="numeric"></td>
+          <td><input class="pol-poznamka" value="${esc(pol.poznamka)}" placeholder="poznámka"></td>
+          <td><button class="item-del pol-del">×</button></td>
+        </tr>`).join("");
       detail = `
         <div class="oblast-detail">
           <div class="onb-field"><label>Fáze rozpracovanosti</label>
             <select data-faze="${p.key}">${fazeOpts}</select></div>
           <div class="onb-field"><label>Poznámka k oblasti</label>
             <textarea data-oblast-poznamka="${p.key}" rows="2">${esc(ob.poznamka || "")}</textarea></div>
+          <div class="onb-field"><label>Smlouvy / položky oblasti</label>
+            <table class="mini-table polozky-table">
+              <thead><tr><th>Typ</th><th>Instituce</th><th>Měs. platba</th><th>Poznámka</th><th></th></tr></thead>
+              <tbody>${polozky || ""}</tbody>
+            </table>
+            <button class="onb-add-btn" data-pridat-polozku="${p.key}">+ Přidat položku</button></div>
           <div class="onb-field"><label>Historie fází</label>${historie}</div>
         </div>`;
     }
@@ -274,17 +293,22 @@ function renderDetail(c) {
 
       <h3>Historie schůzek</h3>
       <div id="schuzky-list">
-        ${(c.schuzky || []).map((s) => `
-          <div class="schuzka-row">
-            <div><strong>${esc(s.datum)}</strong> — ${esc(s.typ)}${s.zdroj === "plaud" ? ` <span class="src-badge advisor">Plaud</span>` : ""}</div>
+        ${(c.schuzky || []).map((s, i) => `
+          <div class="schuzka-row" data-idx="${i}">
+            <div><strong>${esc(s.datum)}</strong> — ${esc(s.typ)} · ${esc(s.kdo || "")}${s.zdroj === "plaud" ? ` <span class="src-badge advisor">Plaud</span>` : ""}</div>
             <div>${esc(s.souhrn)}</div>
             ${s.odkaz ? `<a class="doc-link" href="${esc(s.odkaz)}" target="_blank" rel="noopener">Plný zápis</a>` : ""}
+            <div class="schuzka-akce">
+              <button class="onb-add-btn schuzka-edit">Upravit</button>
+              <button class="item-del schuzka-del">× Smazat</button>
+            </div>
           </div>`).join("") || `<div class="muted-small">Zatím žádné schůzky.</div>`}
       </div>
       <div class="schuzka-form onb-grid">
         <div class="onb-field"><label>Datum</label><input type="date" id="schuzka-datum"></div>
         <div class="onb-field"><label>Typ schůzky</label>
           <select id="schuzka-typ">${SCHUZKY_TYPY.map((t) => `<option>${esc(t)}</option>`).join("")}</select></div>
+        <div class="onb-field"><label>Obchodník</label><input id="schuzka-kdo" value="${esc(session.user)}"></div>
         <div class="onb-field full"><label>Souhrn</label><textarea id="schuzka-souhrn" rows="2"></textarea></div>
         <div class="onb-field full"><label>Odkaz na plný zápis (URL)</label><input type="url" id="schuzka-odkaz" placeholder="https://…"></div>
         <div class="onb-field full"><button id="schuzka-add" class="mode-toggle">Přidat schůzku</button></div>
@@ -297,10 +321,14 @@ function renderDetail(c) {
       <h3>Časová osa cílů</h3>
       <div id="cile-list">
         ${(c.cile || []).map((g, i) => `
-          <div class="cil-row" data-idx="${i}">
+          <div class="cil-row ${g.stav === "splněno" ? "cil-splneno" : ""}" data-idx="${i}">
             <input class="cil-nazev" value="${esc(g.cil)}" placeholder="cíl">
             <input class="cil-castka" value="${esc(g.castka)}" placeholder="částka">
             <input class="cil-termin" value="${esc(g.termin)}" placeholder="termín (rok)">
+            <select class="cil-stav">
+              <option ${(g.stav || "aktivní") === "aktivní" ? "selected" : ""}>aktivní</option>
+              <option ${g.stav === "splněno" ? "selected" : ""}>splněno</option>
+            </select>
             <button class="item-del cil-del">×</button>
           </div>`).join("")}
       </div>
@@ -398,19 +426,75 @@ function renderDetail(c) {
     renderDetail(c);
   });
 
-  // Schůzky
+  // Položky oblastí (smlouvy v oblasti)
+  document.querySelectorAll("[data-pridat-polozku]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const ob = zajistiOblast(c, btn.dataset.pridatPolozku);
+      if (!Array.isArray(ob.polozky)) ob.polozky = [];
+      ob.polozky.push({ typ: "", instituce: "", mesicni_platba: "", poznamka: "" });
+      renderDetail(c);
+    });
+  });
+  document.querySelectorAll(".polozka-row").forEach((row) => {
+    const ob = zajistiOblast(c, row.dataset.oblast);
+    const i = Number(row.dataset.idx);
+    row.querySelectorAll("input").forEach((inp) => {
+      inp.addEventListener("change", () => {
+        ob.polozky[i] = {
+          typ: row.querySelector(".pol-typ").value.trim(),
+          instituce: row.querySelector(".pol-instituce").value.trim(),
+          mesicni_platba: row.querySelector(".pol-platba").value.trim(),
+          poznamka: row.querySelector(".pol-poznamka").value.trim(),
+        };
+        markDirty(c.id);
+      });
+    });
+    row.querySelector(".pol-del").addEventListener("click", () => {
+      ob.polozky.splice(i, 1);
+      markDirty(c.id);
+      renderDetail(c);
+    });
+  });
+
+  // Schůzky — přidání / editace / smazání
   $("#schuzka-add").addEventListener("click", () => {
     const datum = $("#schuzka-datum").value;
     const souhrn = $("#schuzka-souhrn").value.trim();
     if (!datum || !souhrn) { showError(new Error("Schůzka potřebuje alespoň datum a souhrn.")); return; }
     if (!Array.isArray(c.schuzky)) c.schuzky = [];
-    c.schuzky.push({
+    const data = {
       datum, typ: $("#schuzka-typ").value, souhrn,
+      kdo: $("#schuzka-kdo").value.trim() || session.user,
       odkaz: $("#schuzka-odkaz").value.trim(),
-      zdroj: "rucni", plaud_file_id: "",
-    });
+    };
+    if (editovanaSchuzka !== null) {
+      Object.assign(c.schuzky[editovanaSchuzka], data);
+      editovanaSchuzka = null;
+    } else {
+      c.schuzky.push({ id: crypto.randomUUID(), ...data, zdroj: "rucni", plaud_file_id: "" });
+    }
     markDirty(c.id);
     renderDetail(c);
+  });
+  document.querySelectorAll(".schuzka-row").forEach((row) => {
+    const i = Number(row.dataset.idx);
+    row.querySelector(".schuzka-edit").addEventListener("click", () => {
+      const s = c.schuzky[i];
+      editovanaSchuzka = i;
+      $("#schuzka-datum").value = s.datum || "";
+      $("#schuzka-typ").value = s.typ || SCHUZKY_TYPY[0];
+      $("#schuzka-kdo").value = s.kdo || session.user;
+      $("#schuzka-souhrn").value = s.souhrn || "";
+      $("#schuzka-odkaz").value = s.odkaz || "";
+      $("#schuzka-add").textContent = "Uložit změnu schůzky";
+      $("#schuzka-add").scrollIntoView({ block: "center" });
+    });
+    row.querySelector(".schuzka-del").addEventListener("click", () => {
+      c.schuzky.splice(i, 1);
+      editovanaSchuzka = null;
+      markDirty(c.id);
+      renderDetail(c);
+    });
   });
 
   // IDA + cíle
@@ -425,14 +509,16 @@ function renderDetail(c) {
   });
   document.querySelectorAll(".cil-row").forEach((row) => {
     const i = Number(row.dataset.idx);
-    row.querySelectorAll("input").forEach((inp) => {
+    row.querySelectorAll("input, select").forEach((inp) => {
       inp.addEventListener("change", () => {
         c.cile[i] = {
           cil: row.querySelector(".cil-nazev").value.trim(),
           castka: row.querySelector(".cil-castka").value.trim(),
           termin: row.querySelector(".cil-termin").value.trim(),
+          stav: row.querySelector(".cil-stav").value,
         };
         markDirty(c.id);
+        if (inp.classList.contains("cil-stav")) renderDetail(c);
       });
     });
     row.querySelector(".cil-del").addEventListener("click", () => {
@@ -632,6 +718,9 @@ async function importOnboarding(file) {
       INDEX.push(indexEntry(target));
       $("#save-status").textContent = "Onboarding nahrán jako nový klient — doplňte jméno a uložte.";
     }
+    // aktivní smlouvy rozřadit do produktových oblastí (config/oblasti.json)
+    const mapa = await nactiOblastiMapu();
+    rozradSmlouvy(target, rec.onboarding.smlouvy, mapa);
     markDirty(target.id);
     renderList();
   } catch (err) {

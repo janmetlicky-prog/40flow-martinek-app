@@ -1,0 +1,11 @@
+{
+  "_komentar": "Mapování typu smlouvy z klientského formuláře na produktovou oblast karty. Porovnává se malými písmeny jako podřetězec; pořadí = priorita (specifičtější dřív). Nepřiřazený typ spadne do oblasti 'ostatni'.",
+  "mapovani": [
+    { "oblast": "uver_bydleni", "klice": ["hypoté", "bydlen", "stavební spoř"] },
+    { "oblast": "uver",         "klice": ["úvěr", "uver", "půjčk", "pujck", "leasing", "kreditn", "spotřeb"] },
+    { "oblast": "zivot",        "klice": ["život", "zivot", "rizikov"] },
+    { "oblast": "investice",    "klice": ["invest", "podílov", "podilov", "dps", "penzij", "doplňkov"] },
+    { "oblast": "nezivot",      "klice": ["neživot", "nezivot", "majetk", "povinné ručení", "povinne ruceni", "havarij", "cestovn", "odpovědnost", "odpovednost", "úraz", "uraz", "domácnost", "domacnost"] }
+  ],
+  "vychozi": "ostatni"
+}
