@@ -59,6 +59,25 @@ function askToken() {
 }
 
 // ---------------------------------------------------------------------------
+// Konfigurace (config/*.json — edituje Petr, ne kód)
+// ---------------------------------------------------------------------------
+let FAZE = [];
+let SCHUZKY_TYPY = [];
+
+async function loadConfigs() {
+  try {
+    const [f, s] = await Promise.all([
+      fetch("config/faze.json").then((r) => r.json()),
+      fetch("config/schuzky.json").then((r) => r.json()),
+    ]);
+    FAZE = f.faze || [];
+    SCHUZKY_TYPY = s.typy || [];
+  } catch {
+    showError(new Error("Nepodařilo se načíst konfiguraci (config/*.json)."));
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Načtení dat
 // ---------------------------------------------------------------------------
 async function loadAndRender() {
@@ -161,11 +180,19 @@ async function openDetail(id) {
   }
 }
 
+let expandedOblast = null; // rozbalený detail oblasti v kartě
+
+function fmtCas(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d) ? iso : d.toLocaleString("cs-CZ", { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
 function renderDetail(c) {
   currentClientId = c.id;
 
   const productRows = CONFIG.productFields.map((p) => {
-    const ob = c.oblasti[p.key] || { stav: "", faze: "" };
+    const ob = c.oblasti[p.key] || { stav: "", faze: "", faze_historie: [], poznamka: "" };
     const buttons = CONFIG.productStates.map((s) => {
       const active = ob.stav === s;
       const style = active ? `style="background:${CONFIG.stateColors[s]}"` : "";
@@ -173,7 +200,30 @@ function renderDetail(c) {
     }).join("");
     const extra = ob.stav && !CONFIG.productStates.includes(ob.stav)
       ? `<span class="badge" style="background:var(--text-muted)">${esc(ob.stav)}</span>` : "";
-    return `<div class="product-row"><span class="product-name">${p.label}</span><div class="state-options">${buttons}</div>${extra}</div>`;
+    const open = expandedOblast === p.key;
+    const fazeBadge = ob.faze ? `<span class="faze-badge">${esc(ob.faze)}</span>` : "";
+
+    let detail = "";
+    if (open) {
+      const fazeOpts = ['<option value="">— bez fáze —</option>']
+        .concat(FAZE.map((f) => `<option ${ob.faze === f ? "selected" : ""}>${esc(f)}</option>`)).join("");
+      const historie = (ob.faze_historie || []).slice().reverse().map((h) =>
+        `<div class="faze-hist-row"><span>${esc(h.faze)}</span><span class="muted-small">${fmtCas(h.kdy)} · ${esc(h.kdo || "")}</span></div>`).join("")
+        || `<div class="muted-small">Zatím žádná změna fáze.</div>`;
+      detail = `
+        <div class="oblast-detail">
+          <div class="onb-field"><label>Fáze rozpracovanosti</label>
+            <select data-faze="${p.key}">${fazeOpts}</select></div>
+          <div class="onb-field"><label>Poznámka k oblasti</label>
+            <textarea data-oblast-poznamka="${p.key}" rows="2">${esc(ob.poznamka || "")}</textarea></div>
+          <div class="onb-field"><label>Historie fází</label>${historie}</div>
+        </div>`;
+    }
+    return `
+      <div class="product-row ${open ? "open" : ""}">
+        <button class="product-name product-toggle" data-oblast="${p.key}">${p.label} ${open ? "▾" : "▸"}</button>
+        <div class="state-options">${buttons}</div>${fazeBadge}${extra}
+      </div>${detail}`;
   }).join("");
 
   $("#view-detail").innerHTML = `
@@ -210,6 +260,52 @@ function renderDetail(c) {
       <h3>Produktové oblasti</h3>
       ${productRows}
 
+      <h3>Komentáře</h3>
+      <div id="komentare-list">
+        ${(c.komentare || []).map((k) => `
+          <div class="koment-row"><div>${esc(k.text)}</div>
+          <div class="muted-small">${esc(k.autor)} · ${fmtCas(k.kdy)}</div></div>`).join("")
+          || `<div class="muted-small">Zatím žádné komentáře.</div>`}
+      </div>
+      <div class="koment-form">
+        <textarea id="koment-text" rows="2" placeholder="např. Volám 3×, nebere — zkusit večer"></textarea>
+        <button id="koment-add" class="mode-toggle">Přidat komentář</button>
+      </div>
+
+      <h3>Historie schůzek</h3>
+      <div id="schuzky-list">
+        ${(c.schuzky || []).map((s) => `
+          <div class="schuzka-row">
+            <div><strong>${esc(s.datum)}</strong> — ${esc(s.typ)}${s.zdroj === "plaud" ? ` <span class="src-badge advisor">Plaud</span>` : ""}</div>
+            <div>${esc(s.souhrn)}</div>
+            ${s.odkaz ? `<a class="doc-link" href="${esc(s.odkaz)}" target="_blank" rel="noopener">Plný zápis</a>` : ""}
+          </div>`).join("") || `<div class="muted-small">Zatím žádné schůzky.</div>`}
+      </div>
+      <div class="schuzka-form onb-grid">
+        <div class="onb-field"><label>Datum</label><input type="date" id="schuzka-datum"></div>
+        <div class="onb-field"><label>Typ schůzky</label>
+          <select id="schuzka-typ">${SCHUZKY_TYPY.map((t) => `<option>${esc(t)}</option>`).join("")}</select></div>
+        <div class="onb-field full"><label>Souhrn</label><textarea id="schuzka-souhrn" rows="2"></textarea></div>
+        <div class="onb-field full"><label>Odkaz na plný zápis (URL)</label><input type="url" id="schuzka-odkaz" placeholder="https://…"></div>
+        <div class="onb-field full"><button id="schuzka-add" class="mode-toggle">Přidat schůzku</button></div>
+      </div>
+
+      <h3>IDA / investiční dotazník</h3>
+      <div class="onb-field"><label>Odkaz (URL)</label>
+        <input type="url" id="ida-url" value="${esc(c.ida_url || "")}" placeholder="https://…"></div>
+
+      <h3>Časová osa cílů</h3>
+      <div id="cile-list">
+        ${(c.cile || []).map((g, i) => `
+          <div class="cil-row" data-idx="${i}">
+            <input class="cil-nazev" value="${esc(g.cil)}" placeholder="cíl">
+            <input class="cil-castka" value="${esc(g.castka)}" placeholder="částka">
+            <input class="cil-termin" value="${esc(g.termin)}" placeholder="termín (rok)">
+            <button class="item-del cil-del">×</button>
+          </div>`).join("")}
+      </div>
+      <button id="cil-add" class="onb-add-btn">+ Přidat cíl</button>
+
       <div class="src-section src-client">
         <h3>Z klientského formuláře <span class="src-badge client">vyplnil klient</span></h3>
         ${renderClientData(c)}
@@ -235,7 +331,21 @@ function renderDetail(c) {
     $("#copy4fin-btn").classList.toggle("active", !panel.hidden);
     if (!panel.hidden) {
       // přegenerovat s aktuálními daty (poradce mohl právě editovat)
-      panel.innerHTML = `<h3>Přenos do 4fin — pole v pořadí formuláře</h3>${render4finTable(c)}`;
+      panel.innerHTML = `
+        <h3>Přenos do 4fin — pole v pořadí formuláře</h3>
+        <button class="mode-toggle" id="copy4fin-all">Kopírovat celý blok</button>
+        ${render4finTable(c)}`;
+      $("#copy4fin-all").addEventListener("click", async () => {
+        const sources = { base: c, onboarding: c.onboarding || {}, poradce: c.poradce || {} };
+        const text = CONFIG.copy4finFields.map((f) => {
+          let v = sources[f.source][f.key] ?? "";
+          if (Array.isArray(v)) v = v.join(", ");
+          return `${f.label}: ${v || "—"}`;
+        }).join("\n");
+        await navigator.clipboard.writeText(text);
+        $("#copy4fin-all").textContent = "Zkopírováno ✓";
+        setTimeout(() => { $("#copy4fin-all").textContent = "Kopírovat celý blok"; }, 1500);
+      });
       panel.querySelectorAll(".copy-btn").forEach((btn) => {
         btn.addEventListener("click", async () => {
           await navigator.clipboard.writeText(btn.dataset.value);
@@ -254,8 +364,92 @@ function renderDetail(c) {
     });
   });
 
+  // Detail oblasti: rozbalení, fáze (s historií), poznámka
+  document.querySelectorAll(".product-toggle").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      expandedOblast = expandedOblast === btn.dataset.oblast ? null : btn.dataset.oblast;
+      renderDetail(c);
+    });
+  });
+  document.querySelectorAll("[data-faze]").forEach((sel) => {
+    sel.addEventListener("change", () => {
+      const ob = zajistiOblast(c, sel.dataset.faze);
+      ob.faze = sel.value;
+      if (!Array.isArray(ob.faze_historie)) ob.faze_historie = [];
+      ob.faze_historie.push({ faze: sel.value || "(bez fáze)", kdy: new Date().toISOString(), kdo: session.user });
+      markDirty(c.id);
+      renderDetail(c);
+    });
+  });
+  document.querySelectorAll("[data-oblast-poznamka]").forEach((ta) => {
+    ta.addEventListener("change", () => {
+      zajistiOblast(c, ta.dataset.oblastPoznamka).poznamka = ta.value.trim();
+      markDirty(c.id);
+    });
+  });
+
+  // Komentáře
+  $("#koment-add").addEventListener("click", () => {
+    const text = $("#koment-text").value.trim();
+    if (!text) return;
+    if (!Array.isArray(c.komentare)) c.komentare = [];
+    c.komentare.push({ text, autor: session.user, kdy: new Date().toISOString() });
+    markDirty(c.id);
+    renderDetail(c);
+  });
+
+  // Schůzky
+  $("#schuzka-add").addEventListener("click", () => {
+    const datum = $("#schuzka-datum").value;
+    const souhrn = $("#schuzka-souhrn").value.trim();
+    if (!datum || !souhrn) { showError(new Error("Schůzka potřebuje alespoň datum a souhrn.")); return; }
+    if (!Array.isArray(c.schuzky)) c.schuzky = [];
+    c.schuzky.push({
+      datum, typ: $("#schuzka-typ").value, souhrn,
+      odkaz: $("#schuzka-odkaz").value.trim(),
+      zdroj: "rucni", plaud_file_id: "",
+    });
+    markDirty(c.id);
+    renderDetail(c);
+  });
+
+  // IDA + cíle
+  $("#ida-url").addEventListener("change", () => {
+    c.ida_url = $("#ida-url").value.trim();
+    markDirty(c.id);
+  });
+  $("#cil-add").addEventListener("click", () => {
+    if (!Array.isArray(c.cile)) c.cile = [];
+    c.cile.push({ cil: "", castka: "", termin: "" });
+    renderDetail(c);
+  });
+  document.querySelectorAll(".cil-row").forEach((row) => {
+    const i = Number(row.dataset.idx);
+    row.querySelectorAll("input").forEach((inp) => {
+      inp.addEventListener("change", () => {
+        c.cile[i] = {
+          cil: row.querySelector(".cil-nazev").value.trim(),
+          castka: row.querySelector(".cil-castka").value.trim(),
+          termin: row.querySelector(".cil-termin").value.trim(),
+        };
+        markDirty(c.id);
+      });
+    });
+    row.querySelector(".cil-del").addEventListener("click", () => {
+      c.cile.splice(i, 1);
+      markDirty(c.id);
+      renderDetail(c);
+    });
+  });
+
   $("#view-list").hidden = true;
   $("#view-detail").hidden = false;
+}
+
+function zajistiOblast(c, key) {
+  if (!c.oblasti) c.oblasti = {};
+  if (!c.oblasti[key]) c.oblasti[key] = { stav: "", faze: "", faze_historie: [], poznamka: "" };
+  return c.oblasti[key];
 }
 
 // ---------------------------------------------------------------------------
@@ -470,7 +664,8 @@ async function showApp() {
   $("#view-app").hidden = false;
   $("#user-label").textContent = session.label;
   $("#import-onb").hidden = session.role !== "admin";
-  $("#rebuild-index").hidden = session.role !== "admin";
+  $("#admin-section").hidden = session.role !== "admin";
+  await loadConfigs();
   if (!Storage.hasToken()) {
     showError(new Error("Chybí přístupový token k datům — nastavte ho tlačítkem ‚Nastavit token'."));
     return;

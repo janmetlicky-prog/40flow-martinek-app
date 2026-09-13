@@ -46,7 +46,6 @@
           <select id="filter-product"><option value="">Produkt — vše</option></select>
           <select id="filter-product-state" hidden><option value="">Stav produktu — vše</option></select>
           <button id="import-onb" class="mode-toggle" hidden>Nahrát onboarding</button>
-          <button id="rebuild-index" class="mode-toggle" hidden title="Postaví přehled znovu ze všech klientských souborů">Přegenerovat přehled</button>
           <input type="file" id="import-onb-file" accept=".json" hidden>
           <span class="count" id="result-count"></span>
         </div>
@@ -63,6 +62,13 @@
 
       <!-- Detail -->
       <div id="view-detail" hidden></div>
+
+      <!-- Administrace (jen admin) -->
+      <details id="admin-section" class="admin-section" hidden>
+        <summary>Administrace</summary>
+        <p class="muted-small">Nástroje pro správu dat — běžná práce je nepotřebuje.</p>
+        <button id="rebuild-index" class="mode-toggle" title="Postaví přehled znovu ze všech klientských souborů">Přegenerovat přehled</button>
+      </details>
     </main>
 
     <div id="save-bar" class="save-bar">

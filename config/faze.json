@@ -1,0 +1,10 @@
+{
+  "_komentar": "Fáze rozpracovanosti produktové oblasti. Pořadí = pořadí v UI. Petr dodá finální seznam — toto jsou zástupné hodnoty.",
+  "faze": [
+    "Nová",
+    "Čekáme na dokumenty",
+    "Čekáme na akceptaci",
+    "Čekáme na platbu",
+    "Předáno"
+  ]
+}

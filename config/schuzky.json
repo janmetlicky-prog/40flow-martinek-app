@@ -1,0 +1,9 @@
+{
+  "_komentar": "Typy schůzek pro historii schůzek a e-mailové šablony (úkol 5).",
+  "typy": [
+    "Úvodní schůzka",
+    "Analýza",
+    "Servisní schůzka",
+    "Jiné"
+  ]
+}
