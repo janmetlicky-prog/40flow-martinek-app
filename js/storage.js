@@ -177,7 +177,7 @@ class GitHubStorage {
 function indexEntry(c) {
   const oblasti = {};
   for (const [k, v] of Object.entries(c.oblasti || {})) {
-    oblasti[k] = { stav: v.stav || "", faze: v.faze || "" };
+    oblasti[k] = { stav: v.stav || "", faze: v.faze || "", polozek: (v.polozky || []).length };
   }
   return {
     id: c.id, jmeno: c.jmeno, prijmeni: c.prijmeni, firma: c.firma || "",

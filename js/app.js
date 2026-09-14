@@ -179,10 +179,22 @@ function filteredClients() {
   });
 }
 
-function badge(value) {
-  if (!value) return `<span class="badge empty">—</span>`;
+function badge(value, nove) {
+  if (!value) {
+    // Klient něco poslal, ale poradce oblast ještě nezařadil.
+    return nove
+      ? `<span class="badge nove" title="Klient poslal podklady k této oblasti — čeká na zařazení">nové</span>`
+      : `<span class="badge empty">—</span>`;
+  }
   const color = CONFIG.stateColors[value] || "var(--text-muted)";
   return `<span class="badge" style="background:${color}">${esc(value)}</span>`;
+}
+
+/** Oblast, kam klient poslal položku, ale poradce ji zatím nezařadil. */
+function jeNova(ob) {
+  if (!ob) return false;
+  const pocet = ob.polozek != null ? Number(ob.polozek) : (ob.polozky || []).length;
+  return !ob.stav && pocet > 0;
 }
 
 function esc(s) {
@@ -200,7 +212,7 @@ function renderList() {
       <td class="muted">${esc(c.firma || "")}</td>
       <td class="muted">${esc(c.stav || "")}</td>
       <td class="muted">${esc(c.obchodnik || "")}</td>
-      ${CONFIG.productFields.map((p) => `<td>${badge(oblastStav(c, p.key))}</td>`).join("")}
+      ${CONFIG.productFields.map((p) => `<td>${badge(oblastStav(c, p.key), jeNova(c.oblasti && c.oblasti[p.key]))}</td>`).join("")}
     </tr>`).join("");
 }
 
@@ -247,6 +259,9 @@ function renderDetail(c) {
       ? `<span class="badge" style="background:var(--text-muted)">${esc(ob.stav)}</span>` : "";
     const open = expandedOblast === p.key;
     const fazeBadge = ob.faze ? `<span class="faze-badge">Fáze: ${esc(ob.faze)}</span>` : "";
+    const noveBadge = jeNova(ob)
+      ? `<span class="badge nove" title="Klient poslal podklady k této oblasti — zmizí, jakmile nastavíte stav">nové</span>`
+      : "";
 
     let detail = "";
     if (open) {
@@ -281,7 +296,7 @@ function renderDetail(c) {
     return `
       <div class="product-row ${open ? "open" : ""}">
         <button class="product-name product-toggle" data-oblast="${p.key}">${p.label} ${open ? "▾" : "▸"}</button>
-        <div class="state-options">${buttons}</div>${fazeBadge}${extra}
+        <div class="state-options">${buttons}</div>${noveBadge}${fazeBadge}${extra}
       </div>${detail}`;
   }).join("");
 

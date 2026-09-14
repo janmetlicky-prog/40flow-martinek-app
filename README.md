@@ -47,6 +47,33 @@ Tyhle kroky nejdou udělat z kódu, musí je proklikat člověk s přístupem k 
 | `SUPABASE_SERVICE_KEY` | `.env` lokálně (v `.gitignore`), Edge Functions → Secrets | Seed skript a edge funkce. Obchází RLS, **nikdy ne do frontendu ani do repa**. |
 | `GITHUB_TOKEN` | jen prostředí shellu při seedu | Zápis ukázkových dat do prototypového GitHub úložiště. |
 
+## Před nasazením ověř
+
+Automatické testy (`node tests/run.mjs`) hlídají databázi. Tohle jsou věci, které pozná jen člověk u prohlížeče — projdi je po každé změně, která sahá na formulář, kartu nebo ukládání. Odhadem 10 minut.
+
+1. **Přihlášení odkazem** — zadej e-mail, klikni na odkaz z pošty, dostaneš se do přehledu. Deaktivovaný účet (`aktivni = false`) musí skončit hláškou „Váš účet není aktivní".
+2. **Přehled se naplní** — tabulka ukazuje klienty, sedí obchodník a stavy oblastí. Žádná výzva na token, žádná prázdná tabulka.
+3. **Klient bez účtu tlačítko nevidí** — otevři formulář v anonymním okně: po odeslání smí nabídnout **jen** stažení souboru, nikdy „Uložit do systému". (Nabídka, která by pak selhala, je horší než žádná.)
+4. **Formulář uloží** — přihlášený vyplní formulář s `?klient=<id>` a uloží. Hláška o úspěchu se smí objevit jen tehdy, když data opravdu odešla.
+5. **Karta ukáže** — u téhož klienta v kartě sedí kontakt, bilance, smlouvy i povolání a zmizela hláška „klient formulář nevyplnil".
+6. **Přehled sedí** — po uložení formuláře se řádek v přehledu aktualizoval bez obnovení stránky a **obchodník nezmizel**.
+7. **Označení „nové"** — oblast, kam klient poslal smlouvu a poradce ji ještě nezařadil, má v přehledu i v kartě žlutý štítek. Po nastavení stavu zmizí.
+8. **Reload drží změnu** — změň fázi, ulož, zmáčkni F5. Změna tam musí být i po přenačtení (ne jen v paměti prohlížeče).
+9. **Dva taby** — otevři téhož klienta ve dvou oknech, ulož v obou. Druhý musí dostat hlášku o konfliktu, ne tiše přepsat kolegovu práci.
+10. **Varovný pruh** — na všech obrazovkách svítí „Testovací prostředí". Před ostrým provozem se vypíná v `config/app.json` (`testovaci_rezim: false`), ne mazáním kódu.
+
+## Testy
+
+```bash
+node tests/run.mjs                  # vše
+node tests/test_neuplny_zapis.mjs   # po každé změně save_klient
+node tests/test_dva_taby.mjs        # po každé změně zámku proti přepsání
+```
+
+Testy běží proti živé databázi jako přihlášený uživatel, takže procházejí i politikami RLS — stejnou cestou jako aplikace. Potřebují `.env` se service klíčem (přihlášení testovacího uživatele) a vyplněný `config/app.json`.
+
+`test_neuplny_zapis.mjs` existuje kvůli chybě, která by se jinak vrátila: `save_klient` původně přepisoval všechny sloupce z payloadu, takže zápis jen s částí dat tiše smazal obchodníka i podřízené záznamy. **Po každé úpravě `save_klient` ho spusť** — je to jediná pojistka, že se to nestane znovu.
+
 ## Mapování polí z Excelu do databáze
 
 Kde skončila která kolonka z původního listu „Klienti", aby se to dalo za tři měsíce dohledat.

@@ -18,7 +18,12 @@ select
   k.obchodnik_id,
   u.jmeno as obchodnik,
   coalesce(
-    (select jsonb_object_agg(o.klic, jsonb_build_object('stav', o.stav, 'faze', o.faze))
+    -- `polozek` slouží k označení oblasti, kam klient něco poslal, ale
+    -- poradce ji ještě nezařadil (stav prázdný + položky > 0).
+    (select jsonb_object_agg(o.klic, jsonb_build_object(
+              'stav', o.stav,
+              'faze', o.faze,
+              'polozek', (select count(*) from oblasti_polozky p where p.oblast_id = o.id)))
        from oblasti o
       where o.klient_id = k.id),
     '{}'::jsonb
