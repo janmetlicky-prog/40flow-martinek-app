@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>40Flow — Přehled klientů</title>
-  <link rel="stylesheet" href="css/style.css?v=202609142257">
+  <link rel="stylesheet" href="css/style.css?v=202609142328">
 </head>
 <body>
 
@@ -23,13 +23,25 @@
         <div class="claim">Přehled klientů</div>
       </div>
     </div>
-    <label for="login-user">Uživatelské jméno</label>
-    <input id="login-user" type="text" autocomplete="username">
-    <label for="login-pass">Heslo</label>
-    <input id="login-pass" type="password" autocomplete="current-password">
-    <button id="login-btn">Přihlásit se</button>
+    <!-- Ostrý režim: přihlášení odkazem z e-mailu, žádná hesla -->
+    <div id="login-magic" hidden>
+      <label for="login-email">Váš e-mail</label>
+      <input id="login-email" type="email" autocomplete="email" placeholder="jmeno@firma.cz">
+      <button id="login-magic-btn">Poslat přihlašovací odkaz</button>
+      <p class="login-hint">Na e-mail vám přijde odkaz, kterým se přihlásíte. Heslo si nevymýšlíte ani nepamatujete. Pokud vám odkaz nepřijde, napište správci.</p>
+    </div>
+
+    <!-- Ukázkový režim: jednoduché heslo, ostrá data tudy nejdou -->
+    <div id="login-heslo" hidden>
+      <label for="login-user">Uživatelské jméno</label>
+      <input id="login-user" type="text" autocomplete="username">
+      <label for="login-pass">Heslo</label>
+      <input id="login-pass" type="password" autocomplete="current-password">
+      <button id="login-btn">Přihlásit se</button>
+      <p class="login-hint">Ukázkový režim s vymyšlenými klienty. Údaje vám předal správce.</p>
+    </div>
+
     <div id="login-error" class="login-error"></div>
-    <p class="login-hint">Přihlašovací údaje vám předal správce systému. Pokud je nemáte, ozvěte se Janovi.</p>
   </div>
 
   <!-- App -->
@@ -93,11 +105,13 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=202609142257"></script>
-  <script src="js/app-config.js?v=202609142257"></script>
-  <script src="js/storage.demo.js?v=202609142257"></script>
-  <script src="js/storage.js?v=202609142257"></script>
-  <script src="js/mapper.js?v=202609142257"></script>
-  <script src="js/app.js?v=202609142257"></script>
+  <script src="js/config.js?v=202609142328"></script>
+  <script src="js/app-config.js?v=202609142328"></script>
+  <script src="js/auth.js?v=202609142328"></script>
+  <script src="js/storage.demo.js?v=202609142328"></script>
+  <script src="js/storage.supabase.js?v=202609142328"></script>
+  <script src="js/storage.js?v=202609142328"></script>
+  <script src="js/mapper.js?v=202609142328"></script>
+  <script src="js/app.js?v=202609142328"></script>
 </body>
 </html>

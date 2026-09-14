@@ -31,8 +31,48 @@ async function tryLogin() {
   showApp();
 }
 
+/** Ostrý režim: odeslání přihlašovacího odkazu na e-mail. */
+async function posliMagicLink() {
+  const btn = $("#login-magic-btn");
+  const email = $("#login-email").value.trim();
+  $("#login-error").textContent = "";
+  if (!email.includes("@")) {
+    $("#login-error").textContent = "Zadejte prosím platný e-mail.";
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "Odesílám…";
+  try {
+    await Auth.posliOdkaz(email);
+    $("#login-magic").innerHTML =
+      `<p class="login-hint" style="font-size:13px;color:var(--text)">
+         Odkaz je na cestě na <strong>${esc(email)}</strong>.
+         Otevřete ho na tomto počítači — přihlásí vás rovnou do aplikace.
+         Pokud nedorazí do pár minut, mrkněte i do spamu.
+       </p>`;
+  } catch (err) {
+    $("#login-error").textContent = err.message;
+    btn.disabled = false;
+    btn.textContent = "Poslat přihlašovací odkaz";
+  }
+}
+
+/** Přihlášení po návratu z e-mailového odkazu. */
+async function dokonciMagicLink() {
+  try {
+    const u = await Auth.nactiUzivatele();
+    session = { user: u.email, role: u.role, label: `${u.jmeno} (${u.role})`, id: u.id };
+    showApp();
+  } catch (err) {
+    Auth.odhlas();
+    $("#view-login").hidden = false;
+    $("#login-error").textContent = err.message;
+  }
+}
+
 function logout() {
   sessionStorage.removeItem("40flow_session");
+  Auth.odhlas();
   location.reload();
 }
 
@@ -815,6 +855,29 @@ document.addEventListener("DOMContentLoaded", () => {
     e.target.value = "";
   });
 
+  $("#login-magic-btn").addEventListener("click", posliMagicLink);
+  $("#login-email").addEventListener("keydown", (e) => { if (e.key === "Enter") posliMagicLink(); });
+
+  start();
+});
+
+/** Rozhodne, jak se přihlašuje — podle režimu úložiště v config/app.json. */
+async function start() {
+  await nactiAppConfig();
+  const ostry = APP.storage === "supabase";
+  $("#login-magic").hidden = !ostry;
+  $("#login-heslo").hidden = ostry;
+
+  if (ostry) {
+    // návrat z e-mailového odkazu, nebo obnovení běžícího přihlášení
+    if (Auth.zachytZAdresy() || Auth.obnov()) {
+      await dokonciMagicLink();
+      return;
+    }
+    $("#view-login").hidden = false;
+    return;
+  }
+
   const saved = sessionStorage.getItem("40flow_session");
   if (saved) {
     session = JSON.parse(saved);
@@ -822,4 +885,4 @@ document.addEventListener("DOMContentLoaded", () => {
   } else {
     $("#view-login").hidden = false;
   }
-});
+}

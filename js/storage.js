@@ -204,9 +204,11 @@ function vytvorStorage(app) {
   if (druh === "github") {
     Storage = new GitHubStorage(CONFIG.github);
   } else if (druh === "supabase") {
-    // Doplní krok 1 (storage.supabase.js). Do té doby se nespouští naslepo.
-    throw new StorageError("nenasazeno",
-      "Úložiště Supabase zatím není nasazené. V config/app.json přepněte „storage\" na „demo\" nebo „github\".");
+    if (!app.supabase || !app.supabase.url || !app.supabase.anon_key) {
+      throw new StorageError("nenastaveno",
+        "Chybí adresa databáze nebo veřejný klíč v config/app.json.");
+    }
+    Storage = new SupabaseStorage(app.supabase);
   } else {
     Storage = new DemoStorage();
   }
