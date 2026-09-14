@@ -187,6 +187,15 @@ def main():
     (ROOT / "data" / "index.json").write_text(
         json.dumps(index, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Vygenerováno {len(KLIENTI)} testovacích klientů → data/clients/ + data/index.json")
+
+    # Demo sada pro testovací režim aplikace — jeden soubor, leží v repu
+    # aplikace (data jsou smyšlená, mohou být veřejná).
+    demo_dir = ROOT / "demo"
+    demo_dir.mkdir(exist_ok=True)
+    (demo_dir / "klienti.json").write_text(
+        json.dumps({"klienti": KLIENTI}, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"Demo sada → demo/klienti.json")
+
     if "--push" in sys.argv:
         push_to_repo()
 

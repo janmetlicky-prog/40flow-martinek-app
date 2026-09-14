@@ -754,8 +754,21 @@ async function showApp() {
   $("#user-label").textContent = session.label;
   $("#import-onb").hidden = session.role !== "admin";
   $("#admin-section").hidden = session.role !== "admin";
+  await nactiAppConfig();
+  try {
+    vytvorStorage(APP);
+  } catch (err) {
+    showError(err);
+    return;
+  }
+  // Tlačítko na token má smysl jen v GitHub režimu — jinak se vůbec nezobrazí.
+  $("#token-btn").hidden = !storagePotrebujeToken();
+  $("#demo-reset").hidden = APP.storage !== "demo" || session.role !== "admin";
+  // „Přegenerovat přehled" řeší rozpadlý index v GitHub režimu — jinde nedává smysl
+  $("#rebuild-index").hidden = APP.storage !== "github";
+
   await loadConfigs();
-  if (!Storage.hasToken()) {
+  if (storagePotrebujeToken() && !Storage.hasToken()) {
     showError(new Error("Chybí přístupový token k datům — nastavte ho tlačítkem ‚Nastavit token'."));
     return;
   }
@@ -783,6 +796,19 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#save-github").addEventListener("click", saveAll);
   $("#save-download").addEventListener("click", downloadJson);
   $("#rebuild-index").addEventListener("click", rebuildIndex);
+  $("#demo-reset").addEventListener("click", async () => {
+    if (!confirm("Opravdu zahodit všechny změny a vrátit ukázková data do původního stavu?")) return;
+    try {
+      INDEX = await Storage.resetDemo();
+      CLIENTS.clear();
+      dirty.clear();
+      updateSaveBar();
+      showListView();
+      $("#save-status").textContent = "Ukázková data obnovena ✓";
+    } catch (err) {
+      showError(err);
+    }
+  });
   $("#import-onb").addEventListener("click", () => $("#import-onb-file").click());
   $("#import-onb-file").addEventListener("change", (e) => {
     if (e.target.files[0]) importOnboarding(e.target.files[0]);

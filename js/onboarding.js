@@ -386,7 +386,10 @@ async function saveToStorage() {
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  await nactiAppConfig();
+  try { vytvorStorage(APP); } catch { /* formulář jde vyplnit i bez úložiště — na konci se stáhne soubor */ }
+
   const resumed = loadDraft();
   if (resumed) $("#draft-note").hidden = false;
   renderStep();

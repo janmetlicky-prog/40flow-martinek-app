@@ -2,7 +2,7 @@
   "_komentar": "Hlavní nastavení aplikace. Přepínače se mění tady, ne v kódu.",
 
   "_storage": "Kde jsou uložena data: 'github' (prototyp) nebo 'supabase' (cílové řešení).",
-  "storage": "github",
+  "storage": "demo",
 
   "_testovaci_rezim": "true = na všech obrazovkách svítí varovný pruh, že jde o testovací prostředí. Před ostrým provozem přepnout na false.",
   "testovaci_rezim": true,

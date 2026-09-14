@@ -191,6 +191,33 @@ class StorageError extends Error {
   }
 }
 
-// Jediná instance pro celou aplikaci — konfigurace z CONFIG.github
-// (owner/repo datového repa; UI o GitHubu jinak neví).
-const Storage = new GitHubStorage(CONFIG.github);
+/* Jediná instance pro celou aplikaci. Kterou implementaci použít, říká
+ * config/app.json → "storage". UI volá vždy jen Storage.* a o rozdílu neví.
+ *
+ * Výchozí je 'demo', aby aplikace fungovala i když se config nenačte —
+ * demo nikam nesahá a nic nerozbije. Skutečnou volbu nastaví vytvorStorage()
+ * hned po načtení configu. */
+let Storage = new DemoStorage();
+
+function vytvorStorage(app) {
+  const druh = (app && app.storage) || "demo";
+  if (druh === "github") {
+    Storage = new GitHubStorage(CONFIG.github);
+  } else if (druh === "supabase") {
+    // Doplní krok 1 (storage.supabase.js). Do té doby se nespouští naslepo.
+    throw new StorageError("nenasazeno",
+      "Úložiště Supabase zatím není nasazené. V config/app.json přepněte „storage\" na „demo\" nebo „github\".");
+  } else {
+    Storage = new DemoStorage();
+  }
+  // V jiném než GitHub režimu nemá token v prohlížeči co dělat.
+  if (druh !== "github") {
+    try { localStorage.removeItem("40flow_gh_token"); } catch { /* noop */ }
+  }
+  return Storage;
+}
+
+/** Potřebuje běžící režim token od uživatele? (řídí viditelnost tlačítka v UI) */
+function storagePotrebujeToken() {
+  return Storage instanceof GitHubStorage;
+}

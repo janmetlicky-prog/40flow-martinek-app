@@ -243,3 +243,9 @@ main { max-width: 1240px; margin: 0 auto; padding: 24px 28px; }
   border-bottom: 1px solid rgba(0, 0, 0, 0.15);
   position: sticky; top: 0; z-index: 50;
 }
+
+/* --- Přihlašovací obrazovka: branding + nápověda --------------------------- */
+.login-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.login-brand h2 { font-size: 17px; margin: 0; }
+.login-brand .claim { font-size: 12px; color: var(--text-muted); }
+.login-hint { font-size: 11px; color: var(--text-muted); margin-top: 16px; line-height: 1.5; }

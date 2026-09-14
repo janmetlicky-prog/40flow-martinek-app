@@ -1,0 +1,427 @@
+{
+  "klienti": [
+    {
+      "id": "t0001",
+      "vytvoreno": "2026-09-10T09:00:00",
+      "upraveno": "2026-09-14T22:52:38",
+      "upravil": "seed",
+      "jmeno": "Adam",
+      "prijmeni": "Testovací",
+      "firma": "",
+      "stav": "Aktivní klient",
+      "obchodnik": "Petr Martínek",
+      "dohoda": "Podepsána",
+      "datum": "2026-09-01",
+      "lead_agent": "",
+      "oblacek": "Nahráno u partnera",
+      "bilance": "Ano",
+      "sdileni": "Sdíleno",
+      "poznamka_nzp": "",
+      "poznamky_lenka": "",
+      "oblasti": {
+        "zivot": {
+          "stav": "Rozpracováno",
+          "faze": "Čekáme na dokumenty",
+          "faze_historie": [
+            {
+              "faze": "Čekáme na dokumenty",
+              "kdy": "2026-09-10T10:00:00",
+              "kdo": "petr"
+            }
+          ],
+          "poznamka": "Nabídka Pojišťovny Vzor odeslána"
+        },
+        "investice": {
+          "stav": "Budeme řešit",
+          "faze": "Nová",
+          "faze_historie": [
+            {
+              "faze": "Nová",
+              "kdy": "2026-09-10T10:00:00",
+              "kdo": "petr"
+            }
+          ],
+          "poznamka": ""
+        },
+        "nezivot": {
+          "stav": "Audit",
+          "faze": "Nová",
+          "faze_historie": [
+            {
+              "faze": "Nová",
+              "kdy": "2026-09-10T10:00:00",
+              "kdo": "petr"
+            }
+          ],
+          "poznamka": ""
+        },
+        "uver": {
+          "stav": "",
+          "faze": "",
+          "faze_historie": [],
+          "poznamka": ""
+        },
+        "uver_bydleni": {
+          "stav": "Rozpracováno",
+          "faze": "Čekáme na akceptaci",
+          "faze_historie": [
+            {
+              "faze": "Čekáme na akceptaci",
+              "kdy": "2026-09-10T10:00:00",
+              "kdo": "petr"
+            }
+          ],
+          "poznamka": ""
+        }
+      },
+      "onboarding": {
+        "telefon": "+420 777 000 001",
+        "email": "adam.testovaci@example.com",
+        "adresa_trvala": "Zkušební 1906, Praha, 110 00",
+        "adresa_korespondencni": "",
+        "rodinny_stav": "Ženatý / vdaná",
+        "povolani": "Jednatel",
+        "zdroj_prijmu": "OSVČ",
+        "bilance": {
+          "prijmy": [
+            {
+              "popis": "Podnikání",
+              "castka": "95000"
+            }
+          ],
+          "vydaje": [
+            {
+              "popis": "Provoz domácnosti",
+              "castka": "40000"
+            }
+          ],
+          "zavazky": [
+            {
+              "popis": "Hypotéka",
+              "castka": "22000"
+            }
+          ]
+        },
+        "smlouvy": [
+          {
+            "typ": "Životní pojištění",
+            "instituce": "Pojišťovna Vzor",
+            "platba": "1500",
+            "poznamka": "ukázková smlouva"
+          }
+        ],
+        "dokumenty": []
+      },
+      "poradce": {
+        "datum_narozeni": "1906-06-19",
+        "osloveni": "Vykání",
+        "segmentace": "A",
+        "statni_prislusnost": "Česká republika"
+      },
+      "komentare": [
+        {
+          "text": "Volám 3×, nebere — zkusit po 17. hodině.",
+          "autor": "lenka",
+          "kdy": "2026-09-11T14:30:00"
+        }
+      ],
+      "schuzky": [
+        {
+          "datum": "2026-09-11",
+          "typ": "Úvodní schůzka",
+          "souhrn": "Probrána bilance, cíl: renta od 60 let. Klient dodá výpisy.",
+          "odkaz": ""
+        }
+      ],
+      "ida_url": "https://example.com/ida/t0001",
+      "cile": [
+        {
+          "cil": "Renta",
+          "castka": "8 000 000",
+          "termin": "2046"
+        },
+        {
+          "cil": "Rekonstrukce chaty",
+          "castka": "1 200 000",
+          "termin": "2029"
+        }
+      ]
+    },
+    {
+      "id": "t0002",
+      "vytvoreno": "2026-09-10T09:00:00",
+      "upraveno": "2026-09-14T22:52:38",
+      "upravil": "seed",
+      "jmeno": "Alena",
+      "prijmeni": "Zkušební",
+      "firma": "",
+      "stav": "Nový klient",
+      "obchodnik": "Petr Martínek",
+      "dohoda": "",
+      "datum": "",
+      "lead_agent": "",
+      "oblacek": "",
+      "bilance": "",
+      "sdileni": "",
+      "poznamka_nzp": "",
+      "poznamky_lenka": "",
+      "oblasti": {
+        "zivot": {
+          "stav": "Budeme řešit",
+          "faze": "Nová",
+          "faze_historie": [
+            {
+              "faze": "Nová",
+              "kdy": "2026-09-10T10:00:00",
+              "kdo": "petr"
+            }
+          ],
+          "poznamka": ""
+        },
+        "investice": {
+          "stav": "Rozpracováno",
+          "faze": "Čekáme na platbu",
+          "faze_historie": [
+            {
+              "faze": "Čekáme na platbu",
+              "kdy": "2026-09-10T10:00:00",
+              "kdo": "petr"
+            }
+          ],
+          "poznamka": ""
+        },
+        "nezivot": {
+          "stav": "",
+          "faze": "",
+          "faze_historie": [],
+          "poznamka": ""
+        },
+        "uver": {
+          "stav": "",
+          "faze": "",
+          "faze_historie": [],
+          "poznamka": ""
+        },
+        "uver_bydleni": {
+          "stav": "",
+          "faze": "",
+          "faze_historie": [],
+          "poznamka": ""
+        }
+      },
+      "onboarding": null,
+      "poradce": {},
+      "komentare": [],
+      "schuzky": [],
+      "ida_url": "",
+      "cile": []
+    },
+    {
+      "id": "t0003",
+      "vytvoreno": "2026-09-10T09:00:00",
+      "upraveno": "2026-09-14T22:52:38",
+      "upravil": "seed",
+      "jmeno": "Karel",
+      "prijmeni": "Vzorek",
+      "firma": "",
+      "stav": "Aktivní klient",
+      "obchodnik": "Lenka Testová",
+      "dohoda": "",
+      "datum": "",
+      "lead_agent": "",
+      "oblacek": "",
+      "bilance": "",
+      "sdileni": "",
+      "poznamka_nzp": "",
+      "poznamky_lenka": "",
+      "oblasti": {
+        "zivot": {
+          "stav": "Hotovo",
+          "faze": "Předáno",
+          "faze_historie": [
+            {
+              "faze": "Předáno",
+              "kdy": "2026-09-10T10:00:00",
+              "kdo": "petr"
+            }
+          ],
+          "poznamka": ""
+        },
+        "investice": {
+          "stav": "",
+          "faze": "",
+          "faze_historie": [],
+          "poznamka": ""
+        },
+        "nezivot": {
+          "stav": "Nebudeme řešit",
+          "faze": "Nová",
+          "faze_historie": [
+            {
+              "faze": "Nová",
+              "kdy": "2026-09-10T10:00:00",
+              "kdo": "petr"
+            }
+          ],
+          "poznamka": ""
+        },
+        "uver": {
+          "stav": "Rozpracováno",
+          "faze": "Čekáme na dokumenty",
+          "faze_historie": [
+            {
+              "faze": "Čekáme na dokumenty",
+              "kdy": "2026-09-10T10:00:00",
+              "kdo": "petr"
+            }
+          ],
+          "poznamka": ""
+        },
+        "uver_bydleni": {
+          "stav": "",
+          "faze": "",
+          "faze_historie": [],
+          "poznamka": ""
+        }
+      },
+      "onboarding": null,
+      "poradce": {},
+      "komentare": [
+        {
+          "text": "Dokumenty slíbil do pátku.",
+          "autor": "petr",
+          "kdy": "2026-09-09T09:15:00"
+        }
+      ],
+      "schuzky": [],
+      "ida_url": "",
+      "cile": []
+    },
+    {
+      "id": "t0004",
+      "vytvoreno": "2026-09-10T09:00:00",
+      "upraveno": "2026-09-14T22:52:38",
+      "upravil": "seed",
+      "jmeno": "Marie",
+      "prijmeni": "Fiktivní",
+      "firma": "",
+      "stav": "Nový klient",
+      "obchodnik": "Petr Martínek",
+      "dohoda": "",
+      "datum": "",
+      "lead_agent": "",
+      "oblacek": "",
+      "bilance": "",
+      "sdileni": "",
+      "poznamka_nzp": "",
+      "poznamky_lenka": "",
+      "oblasti": {
+        "zivot": {
+          "stav": "",
+          "faze": "",
+          "faze_historie": [],
+          "poznamka": ""
+        },
+        "investice": {
+          "stav": "",
+          "faze": "",
+          "faze_historie": [],
+          "poznamka": ""
+        },
+        "nezivot": {
+          "stav": "",
+          "faze": "",
+          "faze_historie": [],
+          "poznamka": ""
+        },
+        "uver": {
+          "stav": "",
+          "faze": "",
+          "faze_historie": [],
+          "poznamka": ""
+        },
+        "uver_bydleni": {
+          "stav": "",
+          "faze": "",
+          "faze_historie": [],
+          "poznamka": ""
+        }
+      },
+      "onboarding": null,
+      "poradce": {},
+      "komentare": [],
+      "schuzky": [],
+      "ida_url": "",
+      "cile": []
+    },
+    {
+      "id": "t0005",
+      "vytvoreno": "2026-09-10T09:00:00",
+      "upraveno": "2026-09-14T22:52:38",
+      "upravil": "seed",
+      "jmeno": "Josef",
+      "prijmeni": "Ukázkový",
+      "firma": "",
+      "stav": "Pozastaveno",
+      "obchodnik": "Lenka Testová",
+      "dohoda": "",
+      "datum": "",
+      "lead_agent": "",
+      "oblacek": "",
+      "bilance": "",
+      "sdileni": "",
+      "poznamka_nzp": "",
+      "poznamky_lenka": "",
+      "oblasti": {
+        "zivot": {
+          "stav": "Pozdějí",
+          "faze": "Nová",
+          "faze_historie": [
+            {
+              "faze": "Nová",
+              "kdy": "2026-09-10T10:00:00",
+              "kdo": "petr"
+            }
+          ],
+          "poznamka": ""
+        },
+        "investice": {
+          "stav": "Pozdějí",
+          "faze": "Nová",
+          "faze_historie": [
+            {
+              "faze": "Nová",
+              "kdy": "2026-09-10T10:00:00",
+              "kdo": "petr"
+            }
+          ],
+          "poznamka": ""
+        },
+        "nezivot": {
+          "stav": "",
+          "faze": "",
+          "faze_historie": [],
+          "poznamka": ""
+        },
+        "uver": {
+          "stav": "",
+          "faze": "",
+          "faze_historie": [],
+          "poznamka": ""
+        },
+        "uver_bydleni": {
+          "stav": "",
+          "faze": "",
+          "faze_historie": [],
+          "poznamka": ""
+        }
+      },
+      "onboarding": null,
+      "poradce": {},
+      "komentare": [],
+      "schuzky": [],
+      "ida_url": "",
+      "cile": []
+    }
+  ]
+}
