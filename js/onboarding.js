@@ -340,9 +340,17 @@ function finish() {
   $("#progress").hidden = true;
   $("#progress-label").hidden = true;
   $("#done").hidden = false;
-  // Uložení přímo do systému — jen když je v prohlížeči token (testování týmem).
-  // Klient token nemá → stáhne soubor a pošle poradci.
-  if (Storage.hasToken()) $("#btn-save-storage").hidden = false;
+
+  // Zapsat rovnou do systému může jen ten, kdo má do databáze přístup —
+  // tedy přihlášený člen týmu, který si formulář zkouší. Klient účet nemá
+  // (jeho přístup přes odkaz s tokenem přijde v dalším kroku), takže vidí
+  // jen stažení souboru. Dřív se tu ptalo na hasToken(), což u Supabase
+  // vracelo vždy true — formulář pak hlásil úspěch, ale data nikam nedošla.
+  if (Storage.umiZapisovat && Storage.umiZapisovat()) {
+    $("#btn-save-storage").hidden = false;
+    $("#done-hint").textContent =
+      "Údaje můžete uložit rovnou do systému, nebo si je stáhnout jako soubor.";
+  }
 }
 
 async function saveToStorage() {
@@ -388,6 +396,8 @@ async function saveToStorage() {
 // ---------------------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", async () => {
   await nactiAppConfig();
+  // Obnovit případné přihlášení dřív, než se rozhodne o způsobu uložení.
+  if (typeof Auth !== "undefined") Auth.obnov();
   try { vytvorStorage(APP); } catch { /* formulář jde vyplnit i bez úložiště — na konci se stáhne soubor */ }
 
   const resumed = loadDraft();

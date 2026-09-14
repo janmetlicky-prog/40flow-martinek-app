@@ -19,6 +19,10 @@ class SupabaseStorage {
   hasToken() { return true; }
   setToken() { /* nepoužívá se */ }
 
+  /** Zapisovat může jen přihlášený člen týmu. Klient bez účtu ne —
+   *  přístup klienta přes odkaz s tokenem řeší až edge funkce (úkol 3). */
+  umiZapisovat() { return typeof Auth !== "undefined" && !!Auth.token(); }
+
   _hlavicky() {
     const t = Auth.token();
     if (!t) throw new StorageError("neprihlasen", "Nejste přihlášeni. Přihlaste se prosím znovu.");

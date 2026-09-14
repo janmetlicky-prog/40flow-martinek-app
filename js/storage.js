@@ -34,6 +34,8 @@ class GitHubStorage {
   setToken(token) {
     try { localStorage.setItem(TOKEN_KEY, token.trim()); } catch { /* soukromý režim */ }
   }
+  /** Bez vloženého tokenu nemá čím zapsat. */
+  umiZapisovat() { return this.hasToken(); }
   clearToken() {
     try { localStorage.removeItem(TOKEN_KEY); } catch { /* noop */ }
   }

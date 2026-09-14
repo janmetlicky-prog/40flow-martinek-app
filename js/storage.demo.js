@@ -20,6 +20,8 @@ class DemoStorage {
   // Demo režim žádný token nepotřebuje — UI se podle toho řídí.
   hasToken() { return true; }
   setToken() { /* nepoužívá se */ }
+  /** Zápis do prohlížeče je vždy k dispozici. */
+  umiZapisovat() { return true; }
 
   async _nacti() {
     if (this._data) return this._data;
