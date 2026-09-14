@@ -63,30 +63,35 @@ begin
     v_nove,
     coalesce(p->>'upravil', '')
   )
+  -- Přepisují se JEN pole, která volající skutečně poslal. Kdyby se braly
+  -- všechny, neúplný zápis (třeba jen z formuláře) by zbytek záznamu smazal —
+  -- klient by tiše přišel o obchodníka nebo o stav vztahu.
   on conflict (id) do update set
-    jmeno          = excluded.jmeno,
-    prijmeni       = excluded.prijmeni,
-    firma          = excluded.firma,
-    stav           = excluded.stav,
-    datum_ukonceni = excluded.datum_ukonceni,
-    stav_vztahu    = excluded.stav_vztahu,
-    obchodnik_id   = excluded.obchodnik_id,
-    lead_agent     = excluded.lead_agent,
-    ida_url        = excluded.ida_url,
-    email          = excluded.email,
-    telefon        = excluded.telefon,
-    onboarding     = excluded.onboarding,
-    poradce        = excluded.poradce,
+    jmeno          = case when p ? 'jmeno'          then excluded.jmeno          else klienti.jmeno end,
+    prijmeni       = case when p ? 'prijmeni'       then excluded.prijmeni       else klienti.prijmeni end,
+    firma          = case when p ? 'firma'          then excluded.firma          else klienti.firma end,
+    stav           = case when p ? 'stav'           then excluded.stav           else klienti.stav end,
+    datum_ukonceni = case when p ? 'datum_ukonceni' then excluded.datum_ukonceni else klienti.datum_ukonceni end,
+    stav_vztahu    = case when p ? 'stav_vztahu'    then excluded.stav_vztahu    else klienti.stav_vztahu end,
+    obchodnik_id   = case when p ? 'obchodnik_id'   then excluded.obchodnik_id   else klienti.obchodnik_id end,
+    lead_agent     = case when p ? 'lead_agent'     then excluded.lead_agent     else klienti.lead_agent end,
+    ida_url        = case when p ? 'ida_url'        then excluded.ida_url        else klienti.ida_url end,
+    email          = case when p ? 'onboarding'     then excluded.email          else klienti.email end,
+    telefon        = case when p ? 'onboarding'     then excluded.telefon        else klienti.telefon end,
+    onboarding     = case when p ? 'onboarding'     then excluded.onboarding     else klienti.onboarding end,
+    poradce        = case when p ? 'poradce'        then excluded.poradce        else klienti.poradce end,
     upraveno       = excluded.upraveno,
     upravil        = excluded.upravil;
 
   -- Podřízené záznamy: smazat a založit znovu z došlého stavu.
   -- Klient je vždy posílán celý, takže je to jednodušší i bezpečnější
   -- než párovat rozdíly. Historie fází se přenáší také celá.
-  delete from oblasti   where klient_id = v_id;
-  delete from komentare where klient_id = v_id;
-  delete from schuzky   where klient_id = v_id;
-  delete from cile      where klient_id = v_id;
+  -- Podřízené seznamy se přebudují jen tehdy, když je volající poslal.
+  -- Chybějící klíč znamená „neřeším", ne „smaž vše".
+  if p ? 'oblasti'   then delete from oblasti   where klient_id = v_id; end if;
+  if p ? 'komentare' then delete from komentare where klient_id = v_id; end if;
+  if p ? 'schuzky'   then delete from schuzky   where klient_id = v_id; end if;
+  if p ? 'cile'      then delete from cile      where klient_id = v_id; end if;
 
   for v_o in select * from jsonb_array_elements(coalesce(p->'oblasti', '[]'::jsonb))
   loop
