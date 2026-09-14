@@ -206,7 +206,7 @@ function renderDetail(c) {
     const extra = ob.stav && !CONFIG.productStates.includes(ob.stav)
       ? `<span class="badge" style="background:var(--text-muted)">${esc(ob.stav)}</span>` : "";
     const open = expandedOblast === p.key;
-    const fazeBadge = ob.faze ? `<span class="faze-badge">${esc(ob.faze)}</span>` : "";
+    const fazeBadge = ob.faze ? `<span class="faze-badge">Fáze: ${esc(ob.faze)}</span>` : "";
 
     let detail = "";
     if (open) {
@@ -232,7 +232,7 @@ function renderDetail(c) {
           <div class="onb-field"><label>Smlouvy / položky oblasti</label>
             <table class="mini-table polozky-table">
               <thead><tr><th>Typ</th><th>Instituce</th><th>Měs. platba</th><th>Poznámka</th><th></th></tr></thead>
-              <tbody>${polozky || ""}</tbody>
+              <tbody>${polozky || `<tr><td colspan="5" class="muted-small">Zatím žádné smlouvy v této oblasti.</td></tr>`}</tbody>
             </table>
             <button class="onb-add-btn" data-pridat-polozku="${p.key}">+ Přidat položku</button></div>
           <div class="onb-field"><label>Historie fází</label>${historie}</div>
@@ -253,7 +253,7 @@ function renderDetail(c) {
           <h2>${esc(c.jmeno)} ${esc(c.prijmeni)}</h2>
           <div class="subtitle">${esc(c.firma || "")}</div>
         </div>
-        <button class="mode-toggle" id="copy4fin-btn">Kopírovat do 4fin</button>
+        <button class="mode-toggle" id="copy4fin-btn" title="Zobrazí všechna pole v pořadí formuláře 4fin, aby se daly rychle přenést do CRM">Kopírovat do 4fin</button>
       </div>
       <div id="copy4fin-panel" hidden></div>
       <div id="normal-panel"></div>
@@ -264,7 +264,7 @@ function renderDetail(c) {
       <div class="field-grid">
         ${field("Stav", c.stav)}
         ${field("Obchodník", c.obchodnik)}
-        ${field("Lead Agent", c.lead_agent)}
+        ${field("Lead agent <span class=\"help\" title=\"Označení z 4finu — zda je klient veden pod Petrem jako lead agentem\">?</span>", c.lead_agent)}
       </div>
 
       <h3>Dohoda a podklady</h3>

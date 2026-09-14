@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>40Flow — Přehled klientů</title>
-  <link rel="stylesheet" href="css/style.css?v=202609142253">
+  <link rel="stylesheet" href="css/style.css?v=202609142257">
 </head>
 <body>
 
@@ -58,7 +58,7 @@
           <select id="filter-obchodnik"><option value="">Obchodník — vše</option></select>
           <select id="filter-product"><option value="">Produkt — vše</option></select>
           <select id="filter-product-state" hidden><option value="">Stav produktu — vše</option></select>
-          <button id="import-onb" class="mode-toggle" hidden>Nahrát onboarding</button>
+          <button id="import-onb" class="mode-toggle" hidden title="Načte soubor, který vám poslal klient po vyplnění vstupního dotazníku">Nahrát vyplněný dotazník od klienta</button>
           <input type="file" id="import-onb-file" accept=".json" hidden>
           <span class="count" id="result-count"></span>
         </div>
@@ -88,16 +88,16 @@
     <div id="save-bar" class="save-bar">
       <span class="msg">Neuložené změny: <strong id="dirty-count">0</strong></span>
       <button id="save-github">Uložit</button>
-      <button id="save-download" class="secondary">Stáhnout JSON</button>
+      <button id="save-download" class="secondary" title="Stáhne data klienta jako soubor — pro zálohu nebo předání">Stáhnout data</button>
       <span id="save-status" class="save-status"></span>
     </div>
   </div>
 
-  <script src="js/config.js?v=202609142253"></script>
-  <script src="js/app-config.js?v=202609142253"></script>
-  <script src="js/storage.demo.js?v=202609142253"></script>
-  <script src="js/storage.js?v=202609142253"></script>
-  <script src="js/mapper.js?v=202609142253"></script>
-  <script src="js/app.js?v=202609142253"></script>
+  <script src="js/config.js?v=202609142257"></script>
+  <script src="js/app-config.js?v=202609142257"></script>
+  <script src="js/storage.demo.js?v=202609142257"></script>
+  <script src="js/storage.js?v=202609142257"></script>
+  <script src="js/mapper.js?v=202609142257"></script>
+  <script src="js/app.js?v=202609142257"></script>
 </body>
 </html>
