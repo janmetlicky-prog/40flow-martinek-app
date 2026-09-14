@@ -1,0 +1,15 @@
+{
+  "_komentar": "Hlavní nastavení aplikace. Přepínače se mění tady, ne v kódu.",
+
+  "_storage": "Kde jsou uložena data: 'github' (prototyp) nebo 'supabase' (cílové řešení).",
+  "storage": "github",
+
+  "_testovaci_rezim": "true = na všech obrazovkách svítí varovný pruh, že jde o testovací prostředí. Před ostrým provozem přepnout na false.",
+  "testovaci_rezim": true,
+
+  "_supabase": "Vyplní se při přechodu na Supabase. Anon key je veřejný — data chrání RLS politiky, ne utajení klíče. Service key sem NIKDY nepatří.",
+  "supabase": {
+    "url": "",
+    "anon_key": ""
+  }
+}

@@ -1,3 +1,10 @@
 # Data patří do privátního repa 40flow-martinek, ne do app repa
 data/
 output/
+
+# Tajemství — nikdy necommitovat (tento repo je veřejný)
+.env
+.env.*
+!.env.example
+*.pem
+*.key

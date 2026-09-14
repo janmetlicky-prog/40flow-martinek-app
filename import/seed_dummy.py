@@ -62,11 +62,11 @@ def klient(id, jmeno, prijmeni, **kw):
 
 KLIENTI = [
     klient(
-        "t0001", "Petr", "Martin",
+        "t0001", "Adam", "Testovací",
         stav="Aktivní klient", dohoda="Podepsána", datum="2026-09-01",
         oblacek="Nahráno u partnera", bilance="Ano", sdileni="Sdíleno",
         oblasti={
-            "zivot": oblast("Rozpracováno", "Čekáme na dokumenty", "Nabídka Kooperativa odeslána"),
+            "zivot": oblast("Rozpracováno", "Čekáme na dokumenty", "Nabídka Pojišťovny Vzor odeslána"),
             "investice": oblast("Budeme řešit"),
             "nezivot": oblast("Audit"),
             "uver": oblast(),
@@ -75,7 +75,7 @@ KLIENTI = [
         poradce={"datum_narozeni": "1906-06-19", "osloveni": "Vykání", "segmentace": "A",
                  "statni_prislusnost": "Česká republika"},
         onboarding={
-            "telefon": "+420 777 000 001", "email": "petr.martin@test.cz",
+            "telefon": "+420 777 000 001", "email": "adam.testovaci@example.com",
             "adresa_trvala": "Zkušební 1906, Praha, 110 00", "adresa_korespondencni": "",
             "rodinny_stav": "Ženatý / vdaná", "povolani": "Jednatel", "zdroj_prijmu": "OSVČ",
             "bilance": {
@@ -83,8 +83,8 @@ KLIENTI = [
                 "vydaje": [{"popis": "Provoz domácnosti", "castka": "40000"}],
                 "zavazky": [{"popis": "Hypotéka", "castka": "22000"}],
             },
-            "smlouvy": [{"typ": "Životní pojištění", "instituce": "Kooperativa",
-                         "platba": "1500", "poznamka": "smlouva z roku 2019"}],
+            "smlouvy": [{"typ": "Životní pojištění", "instituce": "Pojišťovna Vzor",
+                         "platba": "1500", "poznamka": "ukázková smlouva"}],
             "dokumenty": [],
         },
         komentare=[{"text": "Volám 3×, nebere — zkusit po 17. hodině.",

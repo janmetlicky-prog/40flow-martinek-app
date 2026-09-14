@@ -7,15 +7,17 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+  <!-- Varovný pruh testovacího prostředí (config/app.json → testovaci_rezim). -->
+  <div id="test-banner" class="test-banner">
+    Testovací prostředí — nevkládejte skutečná klientská data.
+  </div>
+
   <div class="onb-wrap">
     <div class="onb-header">
       <span class="logo-mark">B</span>
       <h1>Vstupní dotazník</h1>
       <div class="claim">Pomáháme lidem i firmám dělat chytrá finanční rozhodnutí.</div>
-    </div>
-
-    <div class="onb-testdata-note">
-      ⚠ Testovací provoz — nevyplňujte skutečné osobní údaje. Formulář slouží k ověření procesu.
     </div>
 
     <div class="onb-testdata-note" id="draft-note" hidden>
@@ -48,6 +50,7 @@
   </div>
 
   <script src="js/config.js"></script>
+  <script src="js/app-config.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/mapper.js"></script>
   <script src="js/onboarding.js"></script>
