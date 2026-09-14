@@ -9,7 +9,7 @@
 
   "_supabase": "Vyplní se při přechodu na Supabase. Anon key je veřejný — data chrání RLS politiky, ne utajení klíče. Service key sem NIKDY nepatří.",
   "supabase": {
-    "url": "",
-    "anon_key": ""
+    "url": "https://ftovpafugbvahadtpmxb.supabase.co",
+    "anon_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0b3ZwYWZ1Z2J2YWhhZHRwbXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MDM5OTMsImV4cCI6MjEwNDk3OTk5M30.7XsODKSbYfm-2cIhlKZOUIuW4egz3fODmoCPmOJZ1SU"
   }
 }

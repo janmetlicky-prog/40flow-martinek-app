@@ -15,6 +15,53 @@ Klientský dashboard nad databází klientů. Nezávislý zdroj pravdy paraleln�
 
 ## Struktura
 
+## Supabase — ruční nastavení v dashboardu (checklist)
+
+Tyhle kroky nejdou udělat z kódu, musí je proklikat člověk s přístupem k účtu. Pořadí odpovídá závislostem.
+
+| # | Kde | Co | Hotovo |
+|---|---|---|---|
+| 1 | Zakládání projektu | Region **Central EU (Frankfurt)** — po založení už nejde změnit | ☐ |
+| 2 | SQL Editor | Spustit `supabase/migrations/001_schema.sql` … `004_rls.sql` **v tomto pořadí** | ☐ |
+| 3 | Authentication → Providers | Povolit **Email**, zapnout *Magic Link*, vypnout *Confirm password* | ☐ |
+| 4 | Authentication → Providers | Vypnout **Allow new users to sign up** — účty zakládá jen admin pozvánkou | ☐ |
+| 5 | Authentication → URL Configuration | *Site URL* = adresa aplikace; do *Redirect URLs* přidat tutéž adresu | ☐ |
+| 6 | Storage | Vytvořit bucket **`dokumenty`**, nastavit **Private** (nikdy public) | ☐ |
+| 7 | Settings → API | Zkopírovat *Project URL* a *anon public* klíč do `config/app.json` | ☐ |
+| 8 | Settings → API | *service_role* klíč **nikam do repa** — jen do `.env` (seed) a do edge funkcí | ☐ |
+
+### Proměnné prostředí a kde se plní
+
+| Proměnná | Kde žije | K čemu |
+|---|---|---|
+| `supabase.url`, `supabase.anon_key` | `config/app.json` (v repu, veřejné) | Frontend. Anon klíč je veřejný záměrně — data chrání RLS politiky, ne utajení klíče. |
+| `SUPABASE_SERVICE_KEY` | `.env` lokálně (v `.gitignore`), Edge Functions → Secrets | Seed skript a edge funkce. Obchází RLS, **nikdy ne do frontendu ani do repa**. |
+| `GITHUB_TOKEN` | jen prostředí shellu při seedu | Zápis ukázkových dat do prototypového GitHub úložiště. |
+
+## Mapování polí z Excelu do databáze
+
+Kde skončila která kolonka z původního listu „Klienti", aby se to dalo za tři měsíce dohledat.
+
+| Excel | Kam | Poznámka |
+|---|---|---|
+| Jméno, Příjmení, Firma | `klienti.jmeno / prijmeni / firma` | |
+| Stav | `klienti.stav_vztahu` | Nový klient / Aktivní klient / Pozastaveno. **Není to** `klienti.stav` — ten řídí retenci (`aktivni` / `ukonceny` + `datum_ukonceni`) a s Excelem nesouvisí. |
+| Obchodník | `klienti.obchodnik_id` → `uzivatele` | Text z Excelu se při seedu mapuje na řádek uživatele. |
+| Lead Agent | `klienti.lead_agent` (uuid) | **Pozor:** v Excelu je to příznak ANO/NE („je klient u Petra v LA?"), ne jméno. Nic se tedy nenamapuje a původní hodnota zůstává v `poradce->>'lead_agent_puvodni'`. Až Petr upřesní význam, sloupec se buď naplní, nebo zruší. |
+| Dohoda, Datum, Obláček, Bilance, Sdílení, Poznámka NŽP, Poznámky od Lenky | `klienti.poradce` (jsonb) | Interní pracovní pole, jejichž finální podobu Petr teprve upřesní — jako sloupce by znamenaly migraci při každé změně. |
+| Život, Investice, Neživot, Úvěr, Úvěr na bydlení | `oblasti` (řádek na oblast) | `klic` = zivot / investice / nezivot / uver / uver_bydleni; hodnota z Excelu jde do `oblasti.stav`. |
+
+Kontakt (e-mail, telefon) a adresy vyplňuje klient ve vstupním dotazníku → `klienti.onboarding` (jsonb). Sloupce `klienti.email` a `klienti.telefon` jsou z něj **odvozené** — plní je `save_klient` při každém uložení a slouží jen pro hledání a řazení. Z rozhraní se do nich nikdy nezapisuje, takže nemůže vzniknout otázka „který údaj platí".
+
+## Převod na vlastní účet (pro Petra / jeho IT)
+
+Systém je schválně postavený tak, aby ho šlo převzít celý, bez nás.
+
+1. **Databáze.** V Supabase → Settings → General → *Transfer project* převést projekt na účet firmy. Data, uživatelé i nastavení zůstávají. Alternativa při zakládání načisto: založit nový projekt (region Frankfurt) a spustit `supabase/migrations/*.sql` v pořadí — schéma je v repu, nic se neklikalo ručně.
+2. **Aplikace.** Je to statické HTML/CSS/JS bez build kroku — nahraje se kamkoli (GitHub Pages, Netlify, vlastní server). Po přesunu upravit v `config/app.json` `supabase.url` a `supabase.anon_key` a v Supabase → Authentication → URL Configuration nastavit novou adresu.
+3. **Přístupy.** První admin se zakládá přes edge funkci `pozvat_uzivatele` (potřebuje service klíč). Další uživatele pak přidává admin přímo v aplikaci.
+4. **Co se nikam nekopíruje.** Service klíč, obsah bucketu `dokumenty` a `.env`. Bucket je součástí projektu a přesune se s ním; service klíč se po převodu vygeneruje nový a starý zneplatní.
+
 ## Pro Petra — jak testovat
 
 Otevři si odkaz, který jsem ti poslal, a přihlas se jménem a heslem, které máš ode mě v samostatné zprávě. Nic si nikam neinstaluješ a nic nenastavuješ — všechno běží v prohlížeči. Systém je zatím testovací: klienti, které uvidíš, jsou vymyšlení (Adam Testovací, Alena Zkušební a další) a všechno, co v něm naklikáš, zůstává jen v tvém prohlížeči. Proto tam prosím nevkládej žádné skutečné údaje o klientech — nahoře na to upozorňuje žlutý pruh.
