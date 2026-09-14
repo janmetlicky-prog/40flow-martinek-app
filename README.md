@@ -15,6 +15,14 @@ Klientský dashboard nad databází klientů. Nezávislý zdroj pravdy paraleln�
 
 ## Struktura
 
+## Pro Petra — jak testovat
+
+Otevři si odkaz, který jsem ti poslal, a přihlas se jménem a heslem, které máš ode mě v samostatné zprávě. Nic si nikam neinstaluješ a nic nenastavuješ — všechno běží v prohlížeči. Systém je zatím testovací: klienti, které uvidíš, jsou vymyšlení (Adam Testovací, Alena Zkušební a další) a všechno, co v něm naklikáš, zůstává jen v tvém prohlížeči. Proto tam prosím nevkládej žádné skutečné údaje o klientech — nahoře na to upozorňuje žlutý pruh.
+
+Projdi si to takhle: v přehledu klientů zkus hledání a filtry, pak klikni na kteréhokoli klienta. V jeho kartě rozklikni produktovou oblast (Život, Investice, Úvěr…) — uvidíš fázi rozpracovanosti, poznámku a seznam smluv, všechno se dá měnit. Níž v kartě je místo na komentáře (třeba „volal jsem třikrát, nebere"), historie schůzek, odkaz na investiční dotazník a časová osa cílů. Nakonec zkus vpravo nahoře tlačítko „Kopírovat do 4fin" — vypíše všechna pole v tom pořadí, jak je máte ve 4finu, a u každého je tlačítko na zkopírování. Změny se ukládají tlačítkem „Uložit" v pruhu dole. Samostatně se pak podívej na vstupní dotazník (odkaz je ve druhé zprávě) — to je formulář, který dostane klient e-mailem a vyplní si ho sám.
+
+Zpětnou vazbu posílej prosím po obrazovkách: udělej screenshot a napiš k němu „tady doplnit…" nebo „tady bych to měl jinak…". Nejvíc mi pomůže, když u každé obrazovky zvlášť označíš, **která pole má vidět a vyplňovat klient a která jen tvůj tým** — to je jediné, co potřebuju vědět dřív, než se to napojí na ostrou databázi. Klidně posílej i drobnosti, které ti přijdou hloupé (špatný název pole, nejasné tlačítko) — přesně ty teď hledám.
+
 ## Branding
 
 Vizuál „Bohatněte s rozumem": černý text (`--ink`), žlutý kruhový akcent (`--accent: #F5C518`), bílé pozadí (`--bg`). Vše ostatní se odvozuje z těchto tří proměnných + šedé škály v `css/style.css` → `:root`. Výměna palety = jeden zásah.
