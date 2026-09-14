@@ -25,15 +25,18 @@ declare
   v_zaznam      jsonb;
 begin
   if v_id is null or v_id = '' then
-    raise exception 'CHYBI_ID' using message = 'Záznam klienta nemá id.';
+    raise exception using errcode = 'P0001',
+      message = 'CHYBI_ID: Záznam klienta nemá id.';
   end if;
 
   select upraveno into v_skutecne from klienti where id = v_id;
 
   -- Existující klient: ověřit, že se pod rukama nezměnil.
   if found and v_ocekavane is not null and v_skutecne is distinct from v_ocekavane then
-    raise exception 'KONFLIKT'
-      using message = 'Záznam mezitím upravil někdo jiný. Načtěte klienta znovu a proveďte úpravu na aktuální verzi.';
+    -- Zpráva musí obsahovat slovo KONFLIKT — podle něj aplikace pozná,
+    -- že má nabídnout „Načíst znovu" místo obecné chybové hlášky.
+    raise exception using errcode = 'P0001',
+      message = 'KONFLIKT: Záznam mezitím upravil někdo jiný. Načtěte klienta znovu a proveďte úpravu na aktuální verzi.';
   end if;
 
   insert into klienti (

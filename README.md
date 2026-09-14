@@ -29,6 +29,15 @@ Tyhle kroky nejdou udělat z kódu, musí je proklikat člověk s přístupem k 
 | 6 | Storage | Vytvořit bucket **`dokumenty`**, nastavit **Private** (nikdy public) | ☐ |
 | 7 | Settings → API | Zkopírovat *Project URL* a *anon public* klíč do `config/app.json` | ☐ |
 | 8 | Settings → API | *service_role* klíč **nikam do repa** — jen do `.env` (seed) a do edge funkcí | ☐ |
+| 9 | Authentication → SMTP | Nastavit **vlastní SMTP** (viz varování níže) — bez něj se nedá pozvat nikdo mimo tým projektu | ☐ |
+
+> **Vestavěný odesílatel e-mailů nestačí.** Supabase bez vlastního SMTP posílá přihlašovací odkazy **jen členům projektu** a povolí přibližně 2–3 e-maily za hodinu. Pozvánka na adresu mimo tým buď nedorazí, nebo skončí ve spamu — odesílatelem je obecná adresa Supabase. Před ostrým provozem je potřeba připojit vlastní SMTP (firemní doména), jinak se nový poradce nepřihlásí.
+
+### Dvě věci, na kterých se dá naletět
+
+**Politiky RLS nestačí.** Politika říká, které řádky role uvidí; *grant* říká, jestli na tabulku vůbec smí. Bez grantů vrátí server „permission denied" i při dokonale nastavených politikách — a politiky se ani nevyhodnotí. Proto existuje `005_grants.sql`; při zakládání dalších tabulek na něj nezapomeňte.
+
+**Pozvánka nesmí měnit primární klíč.** Když už řádek v `uzivatele` existuje (například ze seedu) a odkazují na něj cizí klíče, nejde mu přepsat `id` na nově vzniklé auth id — databáze to odmítne. Správný postup je opačný: auth účet se zakládá **s uuid existujícího řádku** (`POST /auth/v1/admin/users` s polem `id`). Tím zůstanou historie komentářů i přiřazení klientů napojené. Edge funkce `pozvat_uzivatele` to musí dělat takto.
 
 ### Proměnné prostředí a kde se plní
 
