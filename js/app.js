@@ -83,7 +83,7 @@ async function prihlasHeslem() {
 async function dokonciMagicLink() {
   try {
     const u = await Auth.nactiUzivatele();
-    session = { user: u.email, role: u.role, label: `${u.jmeno} (${u.role})`, id: u.id };
+    session = { user: u.email, role: u.role, label: `${u.jmeno} (${u.role})`, id: u.id, jmeno: u.jmeno };
     showApp();
   } catch (err) {
     Auth.odhlas();
@@ -360,7 +360,7 @@ function renderDetail(c) {
       <div id="komentare-list">
         ${(c.komentare || []).map((k) => `
           <div class="koment-row"><div>${esc(k.text)}</div>
-          <div class="muted-small">${esc(k.autor)} · ${fmtCas(k.kdy)}</div></div>`).join("")
+          <div class="muted-small">${esc(k.autor || "")} · ${fmtCas(k.kdy)}</div></div>`).join("")
           || `<div class="muted-small">Zatím žádné komentáře.</div>`}
       </div>
       <div class="koment-form">
@@ -372,7 +372,7 @@ function renderDetail(c) {
       <div id="schuzky-list">
         ${(c.schuzky || []).map((s, i) => `
           <div class="schuzka-row" data-idx="${i}">
-            <div><strong>${esc(s.datum)}</strong> — ${esc(s.typ)} · ${esc(s.kdo || "")}${s.zdroj === "plaud" ? ` <span class="src-badge advisor">Plaud</span>` : ""}</div>
+            <div><strong>${esc(s.datum)}</strong> — ${esc(s.typ)} · ${esc(s.kdo_jmeno || s.kdo || "")}${s.zdroj === "plaud" ? ` <span class="src-badge advisor">Plaud</span>` : ""}</div>
             <div>${esc(s.souhrn)}</div>
             ${s.odkaz ? `<a class="doc-link" href="${esc(s.odkaz)}" target="_blank" rel="noopener">Plný zápis</a>` : ""}
             <div class="schuzka-akce">
@@ -385,7 +385,7 @@ function renderDetail(c) {
         <div class="onb-field"><label>Datum</label><input type="date" id="schuzka-datum"></div>
         <div class="onb-field"><label>Typ schůzky</label>
           <select id="schuzka-typ">${SCHUZKY_TYPY.map((t) => `<option>${esc(t)}</option>`).join("")}</select></div>
-        <div class="onb-field"><label>Obchodník</label><input id="schuzka-kdo" value="${esc(session.user)}"></div>
+        <div class="onb-field"><label>Obchodník</label><input id="schuzka-kdo" value="${esc(session.jmeno || session.user)}" ${session.id ? "readonly" : ""}></div>
         <div class="onb-field full"><label>Souhrn</label><textarea id="schuzka-souhrn" rows="2"></textarea></div>
         <div class="onb-field full"><label>Odkaz na plný zápis (URL)</label><input type="url" id="schuzka-odkaz" placeholder="https://…"></div>
         <div class="onb-field full"><button id="schuzka-add" class="mode-toggle">Přidat schůzku</button></div>
@@ -481,7 +481,7 @@ function renderDetail(c) {
       const ob = zajistiOblast(c, sel.dataset.faze);
       ob.faze = sel.value;
       if (!Array.isArray(ob.faze_historie)) ob.faze_historie = [];
-      ob.faze_historie.push({ faze: sel.value || "(bez fáze)", kdy: new Date().toISOString(), kdo: session.user });
+      ob.faze_historie.push({ faze: sel.value || "(bez fáze)", kdy: new Date().toISOString(), kdo: session.jmeno || session.user });
       markDirty(c.id);
       renderDetail(c);
     });
@@ -498,7 +498,11 @@ function renderDetail(c) {
     const text = $("#koment-text").value.trim();
     if (!text) return;
     if (!Array.isArray(c.komentare)) c.komentare = [];
-    c.komentare.push({ text, autor: session.user, kdy: new Date().toISOString() });
+    // autor_id jde do databáze (FK), jméno je jen pro okamžité zobrazení
+    c.komentare.push({
+      text, autor_id: session.id || null, autor: session.jmeno || session.user,
+      kdy: new Date().toISOString(),
+    });
     markDirty(c.id);
     renderDetail(c);
   });
@@ -539,9 +543,12 @@ function renderDetail(c) {
     const souhrn = $("#schuzka-souhrn").value.trim();
     if (!datum || !souhrn) { showError(new Error("Schůzka potřebuje alespoň datum a souhrn.")); return; }
     if (!Array.isArray(c.schuzky)) c.schuzky = [];
+    // V ostrém režimu je `kdo` id přihlášeného (FK), jméno jen pro zobrazení.
+    // V ukázkovém režimu zůstává volný text.
     const data = {
       datum, typ: $("#schuzka-typ").value, souhrn,
-      kdo: $("#schuzka-kdo").value.trim() || session.user,
+      kdo: session.id || ($("#schuzka-kdo").value.trim() || session.user),
+      kdo_jmeno: session.id ? (session.jmeno || session.user) : "",
       odkaz: $("#schuzka-odkaz").value.trim(),
     };
     if (editovanaSchuzka !== null) {
@@ -560,7 +567,7 @@ function renderDetail(c) {
       editovanaSchuzka = i;
       $("#schuzka-datum").value = s.datum || "";
       $("#schuzka-typ").value = s.typ || SCHUZKY_TYPY[0];
-      $("#schuzka-kdo").value = s.kdo || session.user;
+      $("#schuzka-kdo").value = s.kdo_jmeno || s.kdo || session.jmeno || session.user;
       $("#schuzka-souhrn").value = s.souhrn || "";
       $("#schuzka-odkaz").value = s.odkaz || "";
       $("#schuzka-add").textContent = "Uložit změnu schůzky";

@@ -31,6 +31,8 @@ Tyhle kroky nejdou udělat z kódu, musí je proklikat člověk s přístupem k 
 | 8 | Settings → API | *service_role* klíč **nikam do repa** — jen do `.env` (seed) a do edge funkcí | ☐ |
 | 9 | Authentication → SMTP | Nastavit **vlastní SMTP** (viz varování níže) — bez něj se nedá pozvat nikdo mimo tým projektu | ☐ |
 
+> **Přihlášení proto běží e-mailem a heslem** — heslo nastavuje správce (admin API), na doručení pošty nic nezávisí. Magic link zůstává v aplikaci jako druhá cesta pro dobu, kdy bude SMTP.
+>
 > **Vestavěný odesílatel e-mailů nestačí.** Supabase bez vlastního SMTP posílá přihlašovací odkazy **jen členům projektu** a povolí přibližně 2–3 e-maily za hodinu. Pozvánka na adresu mimo tým buď nedorazí, nebo skončí ve spamu — odesílatelem je obecná adresa Supabase. Před ostrým provozem je potřeba připojit vlastní SMTP (firemní doména), jinak se nový poradce nepřihlásí.
 
 ### Přihlašovací e-mail — odolný vůči skenerům pošty
@@ -64,7 +66,7 @@ Rozhodující je řádek s odkazem: `{{ .SiteURL }}?token_hash={{ .TokenHash }}&
 
 Automatické testy (`node tests/run.mjs`) hlídají databázi. Tohle jsou věci, které pozná jen člověk u prohlížeče — projdi je po každé změně, která sahá na formulář, kartu nebo ukládání. Odhadem 10 minut.
 
-1. **Přihlášení odkazem** — zadej e-mail, klikni na odkaz z pošty, dostaneš se do přehledu. Deaktivovaný účet (`aktivni = false`) musí skončit hláškou „Váš účet není aktivní".
+1. **Přihlášení e-mailem a heslem** — dostaneš se do přehledu. Špatné heslo musí hlásit „Nesprávný e-mail nebo heslo", deaktivovaný účet (`aktivni = false`) hlášku „Váš účet není aktivní".
 2. **Přehled se naplní** — tabulka ukazuje klienty, sedí obchodník a stavy oblastí. Žádná výzva na token, žádná prázdná tabulka.
 3. **Klient bez účtu tlačítko nevidí** — otevři formulář v anonymním okně: po odeslání smí nabídnout **jen** stažení souboru, nikdy „Uložit do systému". (Nabídka, která by pak selhala, je horší než žádná.)
 4. **Formulář uloží** — přihlášený vyplní formulář s `?klient=<id>` a uloží. Hláška o úspěchu se smí objevit jen tehdy, když data opravdu odešla.
@@ -113,7 +115,7 @@ Systém je schválně postavený tak, aby ho šlo převzít celý, bez nás.
 
 ## Pro Petra — jak testovat
 
-Otevři si odkaz, který jsem ti poslal, a přihlas se jménem a heslem, které máš ode mě v samostatné zprávě. Nic si nikam neinstaluješ a nic nenastavuješ — všechno běží v prohlížeči. Systém je zatím testovací: klienti, které uvidíš, jsou vymyšlení (Adam Testovací, Alena Zkušební a další) a všechno, co v něm naklikáš, zůstává jen v tvém prohlížeči. Proto tam prosím nevkládej žádné skutečné údaje o klientech — nahoře na to upozorňuje žlutý pruh.
+Otevři si odkaz, který jsem ti poslal, a přihlas se svým e-mailem a heslem, které máš ode mě v samostatné zprávě. Nic si nikam neinstaluješ a nic nenastavuješ — všechno běží v prohlížeči. Systém je zatím testovací: klienti, které uvidíš, jsou vymyšlení (Adam Testovací, Alena Zkušební a další) a všechno, co v něm naklikáš, zůstává jen v tvém prohlížeči. Proto tam prosím nevkládej žádné skutečné údaje o klientech — nahoře na to upozorňuje žlutý pruh.
 
 Projdi si to takhle: v přehledu klientů zkus hledání a filtry, pak klikni na kteréhokoli klienta. V jeho kartě rozklikni produktovou oblast (Život, Investice, Úvěr…) — uvidíš fázi rozpracovanosti, poznámku a seznam smluv, všechno se dá měnit. Níž v kartě je místo na komentáře (třeba „volal jsem třikrát, nebere"), historie schůzek, odkaz na investiční dotazník a časová osa cílů. Nakonec zkus vpravo nahoře tlačítko „Kopírovat do 4fin" — vypíše všechna pole v tom pořadí, jak je máte ve 4finu, a u každého je tlačítko na zkopírování. Změny se ukládají tlačítkem „Uložit" v pruhu dole. Samostatně se pak podívej na vstupní dotazník (odkaz je ve druhé zprávě) — to je formulář, který dostane klient e-mailem a vyplní si ho sám.
 

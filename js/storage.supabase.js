@@ -72,7 +72,10 @@ class SupabaseStorage {
     const vyber = [
       "*",
       "oblasti(*,oblasti_polozky(*),faze_historie(*))",
-      "komentare(*)", "schuzky(*)", "cile(*)",
+      // jména autorů se přibalí přes FK, ať karta neukazuje uuid
+      "komentare(*,autor_uzivatel:uzivatele(jmeno))",
+      "schuzky(*,kdo_uzivatel:uzivatele(jmeno))",
+      "cile(*)",
     ].join(",");
     const radky = await this._rest(`klienti?id=eq.${encodeURIComponent(id)}&select=${encodeURIComponent(vyber)}`);
     if (!radky.length) throw new StorageError("nenalezen", `Klient ${id} nebyl nalezen.`);
@@ -124,9 +127,13 @@ function zTabulek(r) {
     oblasti,
     komentare: (r.komentare || [])
       .slice().sort((a, b) => String(a.kdy).localeCompare(String(b.kdy)))
-      .map((k) => ({ text: k.text, autor_id: k.autor_id, autor: k.autor_id, kdy: k.kdy })),
+      .map((k) => ({
+        text: k.text, autor_id: k.autor_id, kdy: k.kdy,
+        autor: (k.autor_uzivatel && k.autor_uzivatel.jmeno) || "",
+      })),
     schuzky: (r.schuzky || []).map((s) => ({
       id: s.id, datum: s.datum, typ: s.typ, kdo: s.kdo,
+      kdo_jmeno: (s.kdo_uzivatel && s.kdo_uzivatel.jmeno) || "",
       souhrn: s.souhrn, odkaz: s.odkaz, zdroj: s.zdroj, plaud_file_id: s.plaud_file_id,
     })),
     cile: (r.cile || []).map((c) => ({ cil: c.cil, castka: c.castka, termin: c.termin, stav: c.stav })),
@@ -137,6 +144,10 @@ function zTabulek(r) {
 }
 
 const EXCEL_POLE = ["dohoda", "datum", "oblacek", "bilance", "sdileni", "poznamka_nzp", "poznamky_lenka"];
+
+function jeUuid(v) {
+  return typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
 
 function vybaleneExcelove(poradce) {
   const out = {};
@@ -166,9 +177,15 @@ function doTabulek(c, kdo) {
       polozky: o.polozky || [], faze_historie: o.faze_historie || [],
     })),
     komentare: (c.komentare || []).map((k) => ({
-      text: k.text, autor_id: k.autor_id || null, kdy: k.kdy,
+      text: k.text, autor_id: jeUuid(k.autor_id) ? k.autor_id : null, kdy: k.kdy,
     })),
-    schuzky: c.schuzky || [],
+    // `kdo` je FK na uzivatele — cokoli, co není uuid (e-mail, jméno), by
+    // zápis celého klienta shodilo. Radši prázdné než chyba.
+    schuzky: (c.schuzky || []).map((s) => ({
+      id: s.id, datum: s.datum, typ: s.typ,
+      kdo: jeUuid(s.kdo) ? s.kdo : null,
+      souhrn: s.souhrn, odkaz: s.odkaz, zdroj: s.zdroj, plaud_file_id: s.plaud_file_id,
+    })),
     cile: c.cile || [],
     upravil: kdo || "",
     upraveno: c.upraveno || null,   // zámek: server porovná s uloženou hodnotou
