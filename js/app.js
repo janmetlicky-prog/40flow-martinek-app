@@ -884,6 +884,29 @@ async function start() {
   $("#login-heslo").hidden = ostry;
 
   if (ostry) {
+    // Odkaz odolný vůči skenerům: ověřit až po kliknutí člověka.
+    const th = Auth.tokenHashZAdresy();
+    if (th) {
+      $("#view-login").hidden = false;
+      $("#login-magic").hidden = true;
+      $("#login-potvrzeni").hidden = false;
+      const btn = $("#login-potvrdit-btn");
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        btn.textContent = "Přihlašuji…";
+        try {
+          await Auth.potvrdOdkaz(th);
+          await dokonciMagicLink();
+        } catch (err) {
+          $("#login-potvrzeni").hidden = true;
+          $("#login-magic").hidden = false;
+          $("#login-error").textContent = err.message;
+          $("#login-email").focus();
+        }
+      }, { once: true });
+      return;
+    }
+
     // Odkaz, který už nejde použít — vysvětlit, ne mlčky ukázat přihlášení.
     const chyba = Auth.zachytChybu();
     if (chyba) {

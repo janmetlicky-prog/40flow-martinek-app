@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>40Flow — Přehled klientů</title>
-  <link rel="stylesheet" href="css/style.css?v=202609162205">
+  <link rel="stylesheet" href="css/style.css?v=202609162208">
 </head>
 <body>
 
@@ -32,6 +32,15 @@
       <input id="login-email" type="email" autocomplete="email" placeholder="jmeno@firma.cz">
       <button id="login-magic-btn">Poslat přihlašovací odkaz</button>
       <p class="login-hint">Na e-mail vám přijde odkaz, kterým se přihlásíte. Heslo si nevymýšlíte ani nepamatujete. Pokud vám odkaz nepřijde, napište správci.</p>
+    </div>
+
+    <!-- Potvrzení odkazu z e-mailu. Přihlásí až kliknutí člověka, ne pouhé
+         načtení stránky — jinak by odkaz spotřeboval skener firemní pošty. -->
+    <div id="login-potvrzeni" hidden>
+      <p class="login-hint" style="font-size:13px;color:var(--text);margin:0 0 16px">
+        Jedno kliknutí a jste uvnitř.
+      </p>
+      <button id="login-potvrdit-btn">Přihlásit se do aplikace</button>
     </div>
 
     <!-- Ukázkový režim: jednoduché heslo, ostrá data tudy nejdou -->
@@ -107,13 +116,13 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=202609162205"></script>
-  <script src="js/app-config.js?v=202609162205"></script>
-  <script src="js/auth.js?v=202609162205"></script>
-  <script src="js/storage.demo.js?v=202609162205"></script>
-  <script src="js/storage.supabase.js?v=202609162205"></script>
-  <script src="js/storage.js?v=202609162205"></script>
-  <script src="js/mapper.js?v=202609162205"></script>
-  <script src="js/app.js?v=202609162205"></script>
+  <script src="js/config.js?v=202609162208"></script>
+  <script src="js/app-config.js?v=202609162208"></script>
+  <script src="js/auth.js?v=202609162208"></script>
+  <script src="js/storage.demo.js?v=202609162208"></script>
+  <script src="js/storage.supabase.js?v=202609162208"></script>
+  <script src="js/storage.js?v=202609162208"></script>
+  <script src="js/mapper.js?v=202609162208"></script>
+  <script src="js/app.js?v=202609162208"></script>
 </body>
 </html>

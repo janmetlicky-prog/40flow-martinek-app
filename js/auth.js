@@ -60,6 +60,43 @@ const Auth = {
     return "Přihlášení se nepodařilo. Zadejte níže svůj e-mail a nechte si poslat nový odkaz.";
   },
 
+  /**
+   * Odkaz odolný vůči skenerům pošty.
+   *
+   * Firemní pošta odkazy v e-mailech předem „otevírá", aby zkontrolovala,
+   * jestli nejsou škodlivé. Když odkaz vede rovnou na ověření, skener ho tím
+   * spotřebuje a člověku pak přijde už použitý. Proto odkaz vede na aplikaci
+   * s `?token_hash=…` a ověření proběhne až kliknutím na tlačítko (POST) —
+   * skener stránku jen načte, na tlačítko neklikne.
+   *
+   * Vyžaduje upravenou e-mailovou šablonu, viz README → Přihlašovací e-mail.
+   */
+  tokenHashZAdresy() {
+    const p = new URLSearchParams(location.search);
+    const th = p.get("token_hash");
+    return th ? { token_hash: th, type: p.get("type") || "email" } : null;
+  },
+
+  async potvrdOdkaz({ token_hash, type }) {
+    const r = await fetch(`${this._url()}/auth/v1/verify`, {
+      method: "POST",
+      headers: { apikey: this._anon(), "Content-Type": "application/json" },
+      body: JSON.stringify({ type, token_hash }),
+    });
+    history.replaceState(null, "", location.pathname);  // token pryč z adresy
+    if (!r.ok) {
+      throw new Error("Tento přihlašovací odkaz už nejde použít — platí jen jednou a jen omezenou dobu. "
+                    + "Zadejte níže svůj e-mail a nechte si poslat nový.");
+    }
+    const d = await r.json();
+    this.session = {
+      access_token: d.access_token,
+      refresh_token: d.refresh_token || "",
+      expires_at: Date.now() + Number(d.expires_in || 3600) * 1000,
+    };
+    this._uloz();
+  },
+
   /** Zachytí token z adresy po kliknutí na odkaz z e-mailu. */
   zachytZAdresy() {
     if (!location.hash.includes("access_token")) return false;
