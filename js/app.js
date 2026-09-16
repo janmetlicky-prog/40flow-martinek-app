@@ -330,7 +330,14 @@ function renderDetail(c) {
           <h2>${esc(c.jmeno)} ${esc(c.prijmeni)}</h2>
           <div class="subtitle">${esc(c.firma || "")}</div>
         </div>
-        <button class="mode-toggle" id="copy4fin-btn" title="Zobrazí všechna pole v pořadí formuláře 4fin, aby se daly rychle přenést do CRM">Kopírovat do 4fin</button>
+        <div>
+          <a class="mode-toggle" id="formular-otevrit" target="_blank" rel="noopener"
+             href="onboarding.html?klient=${esc(c.id)}"
+             title="Otevře vstupní dotazník tohoto klienta — vyplní ho poradce na schůzce, nebo klient sám">Vstupní formulář</a>
+          <button class="mode-toggle" id="formular-odkaz"
+             title="Zkopíruje odkaz na dotazník, který pošlete klientovi">Kopírovat odkaz pro klienta</button>
+          <button class="mode-toggle" id="copy4fin-btn" title="Zobrazí všechna pole v pořadí formuláře 4fin, aby se daly rychle přenést do CRM">Kopírovat do 4fin</button>
+        </div>
       </div>
       <div id="copy4fin-panel" hidden></div>
       <div id="normal-panel"></div>
@@ -426,6 +433,13 @@ function renderDetail(c) {
       <div class="note-block"><label>Poznámky od Lenky</label>${esc(c.poznamky_lenka || "—")}</div>`;
 
   $("#back-btn").addEventListener("click", showListView);
+  $("#formular-odkaz").addEventListener("click", async () => {
+    const url = new URL(`onboarding.html?klient=${encodeURIComponent(c.id)}`, location.href).href;
+    await navigator.clipboard.writeText(url);
+    const b = $("#formular-odkaz");
+    b.textContent = "Odkaz zkopírován ✓";
+    setTimeout(() => { b.textContent = "Kopírovat odkaz pro klienta"; }, 1500);
+  });
   $("#view-detail").querySelectorAll(".state-options button").forEach((btn) => {
     btn.addEventListener("click", () => toggleState(c, btn.dataset.field, btn.dataset.state));
   });
@@ -627,7 +641,7 @@ function zajistiOblast(c, key) {
 // ---------------------------------------------------------------------------
 function renderClientData(c) {
   const onb = c.onboarding;
-  if (!onb) return `<p class="copy4fin-empty">Klient zatím formulář nevyplnil. Odkaz pro klienta: <code>onboarding.html?klient=${esc(c.id)}</code></p>`;
+  if (!onb) return `<p class="copy4fin-empty">Klient zatím formulář nevyplnil. Otevřete ho tlačítkem „Vstupní formulář" nahoře, nebo klientovi pošlete odkaz („Kopírovat odkaz pro klienta").</p>`;
 
   const kontakt = `
     <div class="field-grid">
