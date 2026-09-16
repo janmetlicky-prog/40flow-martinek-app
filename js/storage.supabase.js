@@ -71,6 +71,8 @@ class SupabaseStorage {
   async loadClient(id) {
     const vyber = [
       "*",
+      // klienti mají na uzivatele dva FK (obchodnik_id, lead_agent) — nutno říct který
+      "obchodnik_uzivatel:uzivatele!klienti_obchodnik_id_fkey(jmeno)",
       "oblasti(*,oblasti_polozky(*),faze_historie(*))",
       // jména autorů se přibalí přes FK, ať karta neukazuje uuid
       "komentare(*,autor_uzivatel:uzivatele(jmeno))",
@@ -121,6 +123,7 @@ function zTabulek(r) {
     stav: r.stav_vztahu || "",          // UI zobrazuje pracovní stav
     stav_retence: r.stav, datum_ukonceni: r.datum_ukonceni,
     obchodnik_id: r.obchodnik_id, lead_agent: r.lead_agent,
+    obchodnik: (r.obchodnik_uzivatel && r.obchodnik_uzivatel.jmeno) || "",
     ida_url: r.ida_url || "",
     onboarding: r.onboarding && Object.keys(r.onboarding).length ? r.onboarding : null,
     poradce: r.poradce || {},
