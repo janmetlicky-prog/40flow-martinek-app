@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>40Flow — Přehled klientů</title>
-  <link rel="stylesheet" href="css/style.css?v=202609162255">
+  <link rel="stylesheet" href="css/style.css?v=202609162303">
 </head>
 <body>
 
@@ -85,9 +85,24 @@
           <select id="filter-obchodnik"><option value="">Obchodník — vše</option></select>
           <select id="filter-product"><option value="">Produkt — vše</option></select>
           <select id="filter-product-state" hidden><option value="">Stav produktu — vše</option></select>
+          <button id="novy-klient" class="mode-toggle" title="Založí kartu nového klienta — pro ruční zadání, když neproběhl import ze schůzky">+ Nový klient</button>
           <button id="import-onb" class="mode-toggle" hidden title="Načte soubor, který vám poslal klient po vyplnění vstupního dotazníku">Nahrát vyplněný dotazník od klienta</button>
           <input type="file" id="import-onb-file" accept=".json" hidden>
           <span class="count" id="result-count"></span>
+        </div>
+        <!-- Založení nového klienta ručně (bez Plaudu / bez importu) -->
+        <div id="novy-klient-panel" class="novy-klient-panel" hidden>
+          <div class="onb-grid">
+            <div class="onb-field"><label for="nk-jmeno">Jméno</label><input id="nk-jmeno" autocomplete="off"></div>
+            <div class="onb-field"><label for="nk-prijmeni">Příjmení</label><input id="nk-prijmeni" autocomplete="off"></div>
+            <div class="onb-field full"><label for="nk-firma">Firma (jen u firemního klienta)</label><input id="nk-firma" autocomplete="off"></div>
+          </div>
+          <p class="muted-small" id="nk-obchodnik-info"></p>
+          <div id="nk-chyba" class="login-error"></div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button id="nk-zalozit" class="mode-toggle active">Založit kartu</button>
+            <button id="nk-zrusit" class="mode-toggle">Zrušit</button>
+          </div>
         </div>
         <table class="client-table">
           <thead>
@@ -120,13 +135,13 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=202609162255"></script>
-  <script src="js/app-config.js?v=202609162255"></script>
-  <script src="js/auth.js?v=202609162255"></script>
-  <script src="js/storage.demo.js?v=202609162255"></script>
-  <script src="js/storage.supabase.js?v=202609162255"></script>
-  <script src="js/storage.js?v=202609162255"></script>
-  <script src="js/mapper.js?v=202609162255"></script>
-  <script src="js/app.js?v=202609162255"></script>
+  <script src="js/config.js?v=202609162303"></script>
+  <script src="js/app-config.js?v=202609162303"></script>
+  <script src="js/auth.js?v=202609162303"></script>
+  <script src="js/storage.demo.js?v=202609162303"></script>
+  <script src="js/storage.supabase.js?v=202609162303"></script>
+  <script src="js/storage.js?v=202609162303"></script>
+  <script src="js/mapper.js?v=202609162303"></script>
+  <script src="js/app.js?v=202609162303"></script>
 </body>
 </html>

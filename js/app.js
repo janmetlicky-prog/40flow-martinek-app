@@ -327,13 +327,23 @@ function renderDetail(c) {
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
-          <h2>${esc(c.jmeno)} ${esc(c.prijmeni)}</h2>
-          <div class="subtitle">${esc(c.firma || "")}</div>
+          <div id="jmeno-zobraz">
+            <h2>${esc(c.jmeno)} ${esc(c.prijmeni)}
+              <button class="onb-add-btn jmeno-upravit" id="jmeno-upravit" title="Upravit jméno, příjmení nebo firmu">Upravit</button>
+            </h2>
+            <div class="subtitle">${esc(c.firma || "")}</div>
+          </div>
+          <div id="jmeno-edit" class="onb-grid jmeno-edit" hidden>
+            <div class="onb-field"><label>Jméno</label><input id="je-jmeno" value="${esc(c.jmeno || "")}"></div>
+            <div class="onb-field"><label>Příjmení</label><input id="je-prijmeni" value="${esc(c.prijmeni || "")}"></div>
+            <div class="onb-field full"><label>Firma</label><input id="je-firma" value="${esc(c.firma || "")}"></div>
+            <div class="onb-field full"><button class="mode-toggle active" id="je-hotovo">Hotovo</button></div>
+          </div>
         </div>
         <div>
-          <a class="mode-toggle" id="formular-otevrit" target="_blank" rel="noopener"
+          ${c.onboarding ? "" : `<a class="mode-toggle" id="formular-otevrit" target="_blank" rel="noopener"
              href="onboarding.html?klient=${esc(c.id)}"
-             title="Otevře vstupní dotazník tohoto klienta — vyplní ho poradce na schůzce, nebo klient sám">Vstupní formulář</a>
+             title="Otevře vstupní dotazník tohoto klienta — vyplníte ho vy na schůzce. Zmizí, jakmile je dotazník vyplněný; pak se upravuje v kartě.">Vyplnit vstupní formulář</a>`}
           <button class="mode-toggle" id="formular-odkaz"
              title="Zkopíruje odkaz na dotazník, který pošlete klientovi">Kopírovat odkaz pro klienta</button>
           <button class="mode-toggle" id="copy4fin-btn" title="Zobrazí všechna pole v pořadí formuláře 4fin, aby se daly rychle přenést do CRM">Kopírovat do 4fin</button>
@@ -439,6 +449,19 @@ function renderDetail(c) {
     const b = $("#formular-odkaz");
     b.textContent = "Odkaz zkopírován ✓";
     setTimeout(() => { b.textContent = "Kopírovat odkaz pro klienta"; }, 1500);
+  });
+  // Úprava jména / příjmení / firmy přímo v kartě
+  $("#jmeno-upravit").addEventListener("click", () => {
+    $("#jmeno-zobraz").hidden = true;
+    $("#jmeno-edit").hidden = false;
+    $("#je-jmeno").focus();
+  });
+  $("#je-hotovo").addEventListener("click", () => {
+    c.jmeno = $("#je-jmeno").value.trim();
+    c.prijmeni = $("#je-prijmeni").value.trim();
+    c.firma = $("#je-firma").value.trim();
+    markDirty(c.id);
+    renderDetail(c);
   });
   $("#view-detail").querySelectorAll(".state-options button").forEach((btn) => {
     btn.addEventListener("click", () => toggleState(c, btn.dataset.field, btn.dataset.state));
@@ -826,21 +849,62 @@ async function importOnboarding(file) {
   }
 }
 
-function novyKlient(rec) {
+/** Prázdná karta klienta ve tvaru, se kterým pracuje UI. */
+function prazdnyKlient(id, { jmeno = "", prijmeni = "", firma = "" } = {}) {
   const oblasti = {};
   for (const p of CONFIG.productFields) oblasti[p.key] = { stav: "", faze: "", faze_historie: [], poznamka: "" };
   return {
-    id: rec.klient_id || `onb${Date.now()}`,
+    id,
     vytvoreno: new Date().toISOString(),
-    jmeno: "", prijmeni: "(z onboardingu — doplnit jméno)",
-    firma: "", stav: "Nový klient", obchodnik: "", dohoda: "", datum: new Date().toISOString().slice(0, 10),
+    jmeno, prijmeni, firma,
+    stav: "Nový klient", stav_retence: "aktivni",
+    // obchodník = kdo kartu založil (v ostrém režimu id → FK, jméno jen pro zobrazení)
+    obchodnik_id: session.id || null, obchodnik: session.jmeno || "",
+    dohoda: "", datum: new Date().toISOString().slice(0, 10),
     lead_agent: "", oblacek: "", bilance: "", sdileni: "",
     poznamka_nzp: "", poznamky_lenka: "",
-    oblasti,
-    onboarding: rec.onboarding,
-    onboarding_submitted_at: rec.onboarding_submitted_at,
+    oblasti, onboarding: null,
     poradce: {}, komentare: [], schuzky: [], ida_url: "", cile: [],
   };
+}
+
+function novyKlient(rec) {
+  const c = prazdnyKlient(rec.klient_id || `onb${Date.now()}`, { prijmeni: "(z onboardingu — doplnit jméno)" });
+  c.onboarding = rec.onboarding;
+  c.onboarding_submitted_at = rec.onboarding_submitted_at;
+  return c;
+}
+
+/** Ruční založení klienta z panelu „+ Nový klient". Uloží hned, pak otevře kartu. */
+async function zalozKlienta() {
+  const jmeno = $("#nk-jmeno").value.trim();
+  const prijmeni = $("#nk-prijmeni").value.trim();
+  const firma = $("#nk-firma").value.trim();
+  $("#nk-chyba").textContent = "";
+  if (!prijmeni && !firma) {
+    $("#nk-chyba").textContent = "Zadejte alespoň příjmení, nebo název firmy.";
+    return;
+  }
+  const btn = $("#nk-zalozit");
+  btn.disabled = true;
+  btn.textContent = "Zakládám…";
+  try {
+    const c = prazdnyKlient(crypto.randomUUID(), { jmeno, prijmeni, firma });
+    await Storage.saveClient(c, session.user);
+    CLIENTS.set(c.id, c);
+    try { INDEX = await Storage.listClients(); } catch { INDEX.push(indexEntry(c)); }
+    initFilters();
+    $("#novy-klient-panel").hidden = true;
+    ["nk-jmeno", "nk-prijmeni", "nk-firma"].forEach((i) => { $(`#${i}`).value = ""; });
+    renderList();
+    await openDetail(c.id);
+    $("#save-status").textContent = "Karta založena ✓";
+  } catch (err) {
+    $("#nk-chyba").textContent = err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Založit kartu";
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -907,6 +971,19 @@ document.addEventListener("DOMContentLoaded", () => {
       showError(err);
     }
   });
+  $("#novy-klient").addEventListener("click", () => {
+    const p = $("#novy-klient-panel");
+    p.hidden = !p.hidden;
+    if (!p.hidden) {
+      $("#nk-obchodnik-info").textContent = session.jmeno
+        ? `Obchodník: ${session.jmeno} (přihlášený). Změnit půjde později v kartě.`
+        : "";
+      $("#nk-jmeno").focus();
+    }
+  });
+  $("#nk-zrusit").addEventListener("click", () => { $("#novy-klient-panel").hidden = true; });
+  $("#nk-zalozit").addEventListener("click", zalozKlienta);
+  $("#nk-prijmeni").addEventListener("keydown", (e) => { if (e.key === "Enter") zalozKlienta(); });
   $("#import-onb").addEventListener("click", () => $("#import-onb-file").click());
   $("#import-onb-file").addEventListener("change", (e) => {
     if (e.target.files[0]) importOnboarding(e.target.files[0]);

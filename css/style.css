@@ -270,3 +270,10 @@ main { max-width: 1240px; margin: 0 auto; padding: 24px 28px; }
 
 /* Tlačítko-odkaz v hlavičce karty (Vstupní formulář) */
 a.mode-toggle { text-decoration: none; display: inline-block; line-height: 1.2; }
+
+/* Panel „+ Nový klient" a úprava jména v kartě */
+.novy-klient-panel { background: var(--gray-50); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 16px; max-width: 640px; }
+.novy-klient-panel .onb-field input { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
+.jmeno-upravit { font-size: 11px; padding: 3px 10px; margin-left: 10px; vertical-align: middle; }
+.jmeno-edit { max-width: 520px; margin-bottom: 8px; }
+.jmeno-edit .onb-field input { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
