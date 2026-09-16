@@ -38,6 +38,28 @@ const Auth = {
     if (!r.ok) throw new Error(`Odeslání odkazu se nezdařilo (${r.status}).`);
   },
 
+  /**
+   * Zachytí chybu z adresy po kliknutí na odkaz, který už nejde použít.
+   *
+   * Odkaz je jednorázový a platí omezenou dobu. Když už byl použitý nebo
+   * vypršel, server místo tokenu vrátí `#error_code=…`. Bez téhle kontroly
+   * aplikace člověka mlčky vrátila na přihlášení a nikdo nevěděl proč.
+   *
+   * Nejčastější příčina u firemní pošty: bezpečnostní filtr odkaz „otevře"
+   * kvůli kontrole dřív než člověk, a tím ho spotřebuje.
+   */
+  zachytChybu() {
+    if (!location.hash.includes("error")) return null;
+    const p = new URLSearchParams(location.hash.slice(1));
+    const kod = p.get("error_code") || p.get("error") || "";
+    history.replaceState(null, "", location.pathname);  // chybu z adresního řádku pryč
+    if (kod === "otp_expired" || kod === "access_denied") {
+      return "Tento přihlašovací odkaz už nejde použít — platí jen jednou a jen omezenou dobu. "
+           + "Zadejte níže svůj e-mail a nechte si poslat nový.";
+    }
+    return "Přihlášení se nepodařilo. Zadejte níže svůj e-mail a nechte si poslat nový odkaz.";
+  },
+
   /** Zachytí token z adresy po kliknutí na odkaz z e-mailu. */
   zachytZAdresy() {
     if (!location.hash.includes("access_token")) return false;

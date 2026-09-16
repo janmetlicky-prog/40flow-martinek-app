@@ -884,6 +884,14 @@ async function start() {
   $("#login-heslo").hidden = ostry;
 
   if (ostry) {
+    // Odkaz, který už nejde použít — vysvětlit, ne mlčky ukázat přihlášení.
+    const chyba = Auth.zachytChybu();
+    if (chyba) {
+      $("#view-login").hidden = false;
+      $("#login-error").textContent = chyba;
+      $("#login-email").focus();
+      return;
+    }
     // návrat z e-mailového odkazu, nebo obnovení běžícího přihlášení
     if (Auth.zachytZAdresy() || Auth.obnov()) {
       await dokonciMagicLink();

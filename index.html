@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>40Flow — Přehled klientů</title>
-  <link rel="stylesheet" href="css/style.css?v=202609150010">
+  <link rel="stylesheet" href="css/style.css?v=202609162205">
 </head>
 <body>
 
@@ -23,6 +23,9 @@
         <div class="claim">Přehled klientů</div>
       </div>
     </div>
+    <!-- Hláška je mimo oba bloky: platí pro heslo i odkaz a nesmí zmizet,
+         když se blok s odkazem po odeslání přepíše. -->
+    <div id="login-error" class="login-error" role="alert"></div>
     <!-- Ostrý režim: přihlášení odkazem z e-mailu, žádná hesla -->
     <div id="login-magic" hidden>
       <label for="login-email">Váš e-mail</label>
@@ -41,7 +44,6 @@
       <p class="login-hint">Ukázkový režim s vymyšlenými klienty. Údaje vám předal správce.</p>
     </div>
 
-    <div id="login-error" class="login-error"></div>
   </div>
 
   <!-- App -->
@@ -105,13 +107,13 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=202609150010"></script>
-  <script src="js/app-config.js?v=202609150010"></script>
-  <script src="js/auth.js?v=202609150010"></script>
-  <script src="js/storage.demo.js?v=202609150010"></script>
-  <script src="js/storage.supabase.js?v=202609150010"></script>
-  <script src="js/storage.js?v=202609150010"></script>
-  <script src="js/mapper.js?v=202609150010"></script>
-  <script src="js/app.js?v=202609150010"></script>
+  <script src="js/config.js?v=202609162205"></script>
+  <script src="js/app-config.js?v=202609162205"></script>
+  <script src="js/auth.js?v=202609162205"></script>
+  <script src="js/storage.demo.js?v=202609162205"></script>
+  <script src="js/storage.supabase.js?v=202609162205"></script>
+  <script src="js/storage.js?v=202609162205"></script>
+  <script src="js/mapper.js?v=202609162205"></script>
+  <script src="js/app.js?v=202609162205"></script>
 </body>
 </html>

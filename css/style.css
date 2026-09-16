@@ -262,3 +262,8 @@ main { max-width: 1240px; margin: 0 auto; padding: 24px 28px; }
   background: var(--accent); color: var(--ink);
   border: 1px solid rgba(0, 0, 0, 0.18); font-weight: 700;
 }
+
+.login-error:not(:empty) {
+  background: #fdf1f1; border: 1px solid #efc4c4; border-radius: var(--radius);
+  padding: 9px 12px; margin: 0 0 14px; line-height: 1.45; font-size: 12px;
+}
