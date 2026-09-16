@@ -33,6 +33,19 @@ Tyhle kroky nejdou udělat z kódu, musí je proklikat člověk s přístupem k 
 
 > **Vestavěný odesílatel e-mailů nestačí.** Supabase bez vlastního SMTP posílá přihlašovací odkazy **jen členům projektu** a povolí přibližně 2–3 e-maily za hodinu. Pozvánka na adresu mimo tým buď nedorazí, nebo skončí ve spamu — odesílatelem je obecná adresa Supabase. Před ostrým provozem je potřeba připojit vlastní SMTP (firemní doména), jinak se nový poradce nepřihlásí.
 
+### Přihlašovací e-mail — odolný vůči skenerům pošty
+
+**Problém:** výchozí e-mail Supabase vede odkazem rovnou na ověření. Firemní pošta (a někdy i Gmail) odkazy v e-mailech předem „otevírá", aby zkontrolovala, jestli nejsou škodlivé — a tím jednorázový odkaz spotřebuje. Člověk pak klikne na odkaz, který už nejde použít.
+
+**Řešení:** odkaz vede na aplikaci s `?token_hash=…`, aplikace ukáže tlačítko „Přihlásit se do aplikace" a ověří se až po kliknutí. Skener stránku jen načte, na tlačítko neklikne, token přežije. Strana aplikace je hotová; zbývá jednorázově přepnout šablonu:
+
+1. Supabase → **Authentication → Emails → Magic Link**
+2. *Subject:* `Přihlášení do přehledu klientů`
+3. *Body:* celý obsah souboru [`supabase/email_magic_link.html`](supabase/email_magic_link.html)
+4. Uložit
+
+Rozhodující je řádek s odkazem: `{{ .SiteURL }}?token_hash={{ .TokenHash }}&type=email`. **Nesmí** tam zůstat `{{ .ConfirmationURL }}` — to je právě ten odkaz, který skener spotřebuje.
+
 ### Dvě věci, na kterých se dá naletět
 
 **Politiky RLS nestačí.** Politika říká, které řádky role uvidí; *grant* říká, jestli na tabulku vůbec smí. Bez grantů vrátí server „permission denied" i při dokonale nastavených politikách — a politiky se ani nevyhodnotí. Proto existuje `005_grants.sql`; při zakládání dalších tabulek na něj nezapomeňte.
