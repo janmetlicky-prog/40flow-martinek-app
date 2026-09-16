@@ -57,6 +57,28 @@ async function posliMagicLink() {
   }
 }
 
+/** Ostrý režim: e-mail + heslo. */
+async function prihlasHeslem() {
+  const btn = $("#login-heslem-btn");
+  const email = $("#login-email").value.trim();
+  const heslo = $("#login-heslo-input").value;
+  $("#login-error").textContent = "";
+  if (!email.includes("@") || !heslo) {
+    $("#login-error").textContent = "Zadejte e-mail i heslo.";
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "Přihlašuji…";
+  try {
+    await Auth.prihlasHeslem(email, heslo);
+    await dokonciMagicLink();
+  } catch (err) {
+    $("#login-error").textContent = err.message;
+    btn.disabled = false;
+    btn.textContent = "Přihlásit se";
+  }
+}
+
 /** Přihlášení po návratu z e-mailového odkazu. */
 async function dokonciMagicLink() {
   try {
@@ -870,8 +892,10 @@ document.addEventListener("DOMContentLoaded", () => {
     e.target.value = "";
   });
 
-  $("#login-magic-btn").addEventListener("click", posliMagicLink);
-  $("#login-email").addEventListener("keydown", (e) => { if (e.key === "Enter") posliMagicLink(); });
+  $("#login-heslem-btn").addEventListener("click", prihlasHeslem);
+  $("#login-heslo-input").addEventListener("keydown", (e) => { if (e.key === "Enter") prihlasHeslem(); });
+  $("#login-email").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#login-heslo-input").focus(); });
+  $("#login-magic-btn").addEventListener("click", (e) => { e.preventDefault(); posliMagicLink(); });
 
   start();
 });

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>40Flow — Přehled klientů</title>
-  <link rel="stylesheet" href="css/style.css?v=202609162208">
+  <link rel="stylesheet" href="css/style.css?v=202609162219">
 </head>
 <body>
 
@@ -26,12 +26,16 @@
     <!-- Hláška je mimo oba bloky: platí pro heslo i odkaz a nesmí zmizet,
          když se blok s odkazem po odeslání přepíše. -->
     <div id="login-error" class="login-error" role="alert"></div>
-    <!-- Ostrý režim: přihlášení odkazem z e-mailu, žádná hesla -->
+    <!-- Ostrý režim: e-mail + heslo. Nezávisí na doručení pošty. -->
     <div id="login-magic" hidden>
       <label for="login-email">Váš e-mail</label>
       <input id="login-email" type="email" autocomplete="email" placeholder="jmeno@firma.cz">
-      <button id="login-magic-btn">Poslat přihlašovací odkaz</button>
-      <p class="login-hint">Na e-mail vám přijde odkaz, kterým se přihlásíte. Heslo si nevymýšlíte ani nepamatujete. Pokud vám odkaz nepřijde, napište správci.</p>
+      <label for="login-heslo-input">Heslo</label>
+      <input id="login-heslo-input" type="password" autocomplete="current-password">
+      <button id="login-heslem-btn">Přihlásit se</button>
+      <p class="login-hint">Přihlašovací údaje vám předal správce. Pokud je nemáte, ozvěte se mu.</p>
+      <!-- Druhá cesta pro dobu, kdy bude vlastní SMTP. Bez něj odkazy nechodí. -->
+      <p class="login-hint"><a href="#" id="login-magic-btn">Nemáte heslo? Poslat přihlašovací odkaz e-mailem</a></p>
     </div>
 
     <!-- Potvrzení odkazu z e-mailu. Přihlásí až kliknutí člověka, ne pouhé
@@ -116,13 +120,13 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=202609162208"></script>
-  <script src="js/app-config.js?v=202609162208"></script>
-  <script src="js/auth.js?v=202609162208"></script>
-  <script src="js/storage.demo.js?v=202609162208"></script>
-  <script src="js/storage.supabase.js?v=202609162208"></script>
-  <script src="js/storage.js?v=202609162208"></script>
-  <script src="js/mapper.js?v=202609162208"></script>
-  <script src="js/app.js?v=202609162208"></script>
+  <script src="js/config.js?v=202609162219"></script>
+  <script src="js/app-config.js?v=202609162219"></script>
+  <script src="js/auth.js?v=202609162219"></script>
+  <script src="js/storage.demo.js?v=202609162219"></script>
+  <script src="js/storage.supabase.js?v=202609162219"></script>
+  <script src="js/storage.js?v=202609162219"></script>
+  <script src="js/mapper.js?v=202609162219"></script>
+  <script src="js/app.js?v=202609162219"></script>
 </body>
 </html>

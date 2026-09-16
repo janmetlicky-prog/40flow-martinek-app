@@ -97,6 +97,38 @@ const Auth = {
     this._uloz();
   },
 
+  /**
+   * Přihlášení e-mailem a heslem — bez závislosti na doručení pošty.
+   * Heslo nastavuje správce (admin API), uživatel ho dostane jinou cestou.
+   * Magic link zůstává jako druhá možnost, až bude vlastní SMTP.
+   */
+  async prihlasHeslem(email, heslo) {
+    let r;
+    try {
+      r = await fetch(`${this._url()}/auth/v1/token?grant_type=password`, {
+        method: "POST",
+        headers: { apikey: this._anon(), "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password: heslo }),
+      });
+    } catch {
+      throw new Error("Nelze se připojit — zkontrolujte internetové připojení.");
+    }
+    if (r.status === 400 || r.status === 401) {
+      throw new Error("Nesprávný e-mail nebo heslo.");
+    }
+    if (r.status === 429) {
+      throw new Error("Příliš mnoho pokusů. Zkuste to prosím za pár minut.");
+    }
+    if (!r.ok) throw new Error(`Přihlášení se nezdařilo (${r.status}).`);
+    const d = await r.json();
+    this.session = {
+      access_token: d.access_token,
+      refresh_token: d.refresh_token || "",
+      expires_at: Date.now() + Number(d.expires_in || 3600) * 1000,
+    };
+    this._uloz();
+  },
+
   /** Zachytí token z adresy po kliknutí na odkaz z e-mailu. */
   zachytZAdresy() {
     if (!location.hash.includes("access_token")) return false;
