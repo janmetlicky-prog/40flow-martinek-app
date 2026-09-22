@@ -53,7 +53,9 @@ class SupabaseStorage {
       }
       throw new StorageError("chyba", `Operace se nezdařila (${r.status}).`);
     }
-    return r.status === 204 ? null : r.json();
+    // 201/204 bez těla (insert/patch bez Prefer: return=representation)
+    const text = await r.text();
+    return text ? JSON.parse(text) : null;
   }
 
   async listClients() {

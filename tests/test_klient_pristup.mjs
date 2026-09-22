@@ -101,7 +101,7 @@ await sTestovacimiKlienty(d, [ID], async () => {
   overit("komentáře netknuté", po.komentare.length === 1 && po.komentare[0].text === "Interní komentář");
   overit("upravil = klient", po.upravil === "klient");
   const ub = po.oblasti.find((o) => o.klic === "uver_bydleni");
-  overit("hypotéka rozřazena do uver_bydleni, stav prázdný (→ „nové")", ub && ub.stav === "" && ub.oblasti_polozky.some((x) => x.typ === "Hypotéka"));
+  overit("hypotéka rozřazena do uver_bydleni, stav prázdný (→ štítek nové)", ub && ub.stav === "" && ub.oblasti_polozky.some((x) => x.typ === "Hypotéka"));
   overit("položka poradce v zivot zůstala", po.oblasti.find((o) => o.klic === "zivot").oblasti_polozky.some((x) => x.typ === "ŽP od poradce"));
   const zm = await d.get(`onboarding_zmeny?klient_id=eq.${ID}&select=pole,stara,nova,zdroj`);
   overit("změna telefonu zalogována (zdroj klient)", zm.some((z) => z.pole === "telefon" && z.zdroj === "klient" && z.stara === "+420 111 111 111"));
