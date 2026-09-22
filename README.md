@@ -87,6 +87,8 @@ node tests/test_dva_taby.mjs        # po každé změně zámku proti přepsán�
 
 Testy běží proti živé databázi jako přihlášený uživatel, takže procházejí i politikami RLS — stejnou cestou jako aplikace. Potřebují `.env` se service klíčem (přihlášení testovacího uživatele) a vyplněný `config/app.json`.
 
+**Pravidlo pro každý test:** nikdy nezapisuje na klienty, které vidí tým (ukázkoví t0001–t0005 ani nic jiného). Test si založí vlastního klienta s prefixem `test-` a po sobě ho smaže — i když spadne uprostřed. Vynucuje to `tests/lib.mjs`: `db().save()` a `smaz()` odmítnou id bez prefixu `test-`, a `sTestovacimiKlienty(d, ids, fn)` uklidí ve `finally`. Nový test pište vždy přes tuhle pomůcku. (Pravidlo vzniklo poté, co test dvou tabů přepsal položky ukázkového klienta, se kterým zrovna pracoval tým.)
+
 `test_neuplny_zapis.mjs` existuje kvůli chybě, která by se jinak vrátila: `save_klient` původně přepisoval všechny sloupce z payloadu, takže zápis jen s částí dat tiše smazal obchodníka i podřízené záznamy. **Po každé úpravě `save_klient` ho spusť** — je to jediná pojistka, že se to nestane znovu.
 
 ## Mapování polí z Excelu do databáze
