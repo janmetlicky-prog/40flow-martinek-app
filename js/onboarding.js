@@ -606,9 +606,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   $("#btn-next").addEventListener("click", () => {
     if (!collectStep()) return;
-    saveDraft();
-    if (step === STEPS.length - 1) { finish(); return; }
+    if (step === STEPS.length - 1) { saveDraft(); finish(); return; }
     step += 1;
+    saveDraft();   // až po posunu — návrat z draftu má pokračovat dalším krokem, ne opakovat hotový
     renderStep();
     window.scrollTo({ top: 0 });
   });
