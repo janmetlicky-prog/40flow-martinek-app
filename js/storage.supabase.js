@@ -122,7 +122,7 @@ function zTabulek(r) {
     id: r.id, jmeno: r.jmeno, prijmeni: r.prijmeni, firma: r.firma,
     stav: r.stav_vztahu || "",          // UI zobrazuje pracovní stav
     stav_retence: r.stav, datum_ukonceni: r.datum_ukonceni,
-    obchodnik_id: r.obchodnik_id, lead_agent: r.lead_agent,
+    obchodnik_id: r.obchodnik_id, lead_agent: r.lead_agent === true,
     obchodnik: (r.obchodnik_uzivatel && r.obchodnik_uzivatel.jmeno) || "",
     ida_url: r.ida_url || "",
     onboarding: r.onboarding && Object.keys(r.onboarding).length ? r.onboarding : null,
@@ -155,7 +155,6 @@ function jeUuid(v) {
 function vybaleneExcelove(poradce) {
   const out = {};
   for (const k of EXCEL_POLE) out[k] = poradce[k] || "";
-  out.lead_agent_popis = poradce.lead_agent_puvodni || "";
   return out;
 }
 
@@ -171,7 +170,7 @@ function doTabulek(c, kdo) {
     datum_ukonceni: c.datum_ukonceni || "",
     stav_vztahu: c.stav || "",
     obchodnik_id: c.obchodnik_id || "",
-    lead_agent: c.lead_agent || "",
+    lead_agent: c.lead_agent === true,
     ida_url: c.ida_url || "",
     onboarding: c.onboarding || {},
     poradce,

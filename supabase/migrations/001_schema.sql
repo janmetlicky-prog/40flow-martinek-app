@@ -33,9 +33,9 @@ create table if not exists klienti (
   stav_vztahu     text not null default '',
 
   obchodnik_id    uuid references uzivatele (id) on delete set null,
-  -- Fakticky duplicita obchodnik_id. V Excelu je to ale ANO/NE příznak,
-  -- ne jméno — nenamapované hodnoty zůstávají v poradce->>'lead_agent_puvodni'.
-  lead_agent      uuid references uzivatele (id) on delete set null,
+  -- Lead Agent = externí portál (SMS/e-maily/landing pages). Příznak,
+  -- jestli je klient v něm nahraný. Není to osoba.
+  lead_agent      boolean not null default false,
 
   ida_url         text not null default '',
 

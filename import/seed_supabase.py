@@ -64,9 +64,8 @@ def prevod(c: dict) -> dict:
     for k in EXCEL_POLE:
         if c.get(k):
             poradce[k] = c[k]
-    # V Excelu je Lead Agent příznak ANO/NE, ne osoba — hodnotu jen uchováme.
-    if c.get("lead_agent"):
-        poradce["lead_agent_puvodni"] = c["lead_agent"]
+    # Lead Agent = příznak „je klient nahraný v portálu Lead Agent?" (Excel: Ano/Ne)
+    lead_agent = str(c.get("lead_agent") or "").strip().lower() in ("ano", "yes", "true", "1")
 
     oblasti = []
     for klic, o in (c.get("oblasti") or {}).items():
@@ -107,7 +106,7 @@ def prevod(c: dict) -> dict:
         "stav": "aktivni",                       # retence — ukázkoví klienti jsou aktivní
         "stav_vztahu": c.get("stav", ""),        # pracovní stav z Excelu
         "obchodnik_id": uid(obchodnik) if obchodnik in UZIVATELE else None,
-        "lead_agent": None,                      # viz poznámka výše
+        "lead_agent": lead_agent,
         "ida_url": c.get("ida_url", ""),
         "onboarding": c.get("onboarding") or {},
         "poradce": poradce,

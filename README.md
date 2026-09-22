@@ -98,7 +98,7 @@ Kde skončila která kolonka z původního listu „Klienti", aby se to dalo za 
 | Jméno, Příjmení, Firma | `klienti.jmeno / prijmeni / firma` | |
 | Stav | `klienti.stav_vztahu` | Nový klient / Aktivní klient / Pozastaveno. **Není to** `klienti.stav` — ten řídí retenci (`aktivni` / `ukonceny` + `datum_ukonceni`) a s Excelem nesouvisí. |
 | Obchodník | `klienti.obchodnik_id` → `uzivatele` | Text z Excelu se při seedu mapuje na řádek uživatele. |
-| Lead Agent | `klienti.lead_agent` (uuid) | **Pozor:** v Excelu je to příznak ANO/NE („je klient u Petra v LA?"), ne jméno. Nic se tedy nenamapuje a původní hodnota zůstává v `poradce->>'lead_agent_puvodni'`. Až Petr upřesní význam, sloupec se buď naplní, nebo zruší. |
+| Lead Agent | `klienti.lead_agent` (boolean) | Lead Agent je **externí portál** na hromadné SMS/e-maily a landing pages. Pole znamená „je klient v Lead Agentu nahraný?" — Excel „Ano" → `true`, jinak `false`. V kartě zaškrtávátko. (Původně omylem modelováno jako odkaz na uživatele; opraveno migrací `006`.) |
 | Dohoda, Datum, Obláček, Bilance, Sdílení, Poznámka NŽP, Poznámky od Lenky | `klienti.poradce` (jsonb) | Interní pracovní pole, jejichž finální podobu Petr teprve upřesní — jako sloupce by znamenaly migraci při každé změně. |
 | Život, Investice, Neživot, Úvěr, Úvěr na bydlení | `oblasti` (řádek na oblast) | `klic` = zivot / investice / nezivot / uver / uver_bydleni; hodnota z Excelu jde do `oblasti.stav`. |
 

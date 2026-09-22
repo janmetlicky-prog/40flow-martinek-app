@@ -358,7 +358,10 @@ function renderDetail(c) {
       <div class="field-grid">
         ${field("Stav", c.stav)}
         ${field("Obchodník", c.obchodnik)}
-        ${field("Lead agent <span class=\"help\" title=\"Označení z 4finu — zda je klient veden pod Petrem jako lead agentem\">?</span>", c.lead_agent)}
+        <div class="field">
+          <label>Lead Agent <span class="help" title="Externí portál pro hromadné SMS, e-maily a landing pages. Zaškrtnuto = klient je v něm nahraný.">?</span></label>
+          <label class="check-inline"><input type="checkbox" id="lead-agent" ${c.lead_agent === true ? "checked" : ""}> V Lead Agentu</label>
+        </div>
       </div>
 
       <h3>Dohoda a podklady</h3>
@@ -449,6 +452,10 @@ function renderDetail(c) {
     const b = $("#formular-odkaz");
     b.textContent = "Odkaz zkopírován ✓";
     setTimeout(() => { b.textContent = "Kopírovat odkaz pro klienta"; }, 1500);
+  });
+  $("#lead-agent").addEventListener("change", (e) => {
+    c.lead_agent = e.target.checked;
+    markDirty(c.id);
   });
   // Úprava jména / příjmení / firmy přímo v kartě
   $("#jmeno-upravit").addEventListener("click", () => {

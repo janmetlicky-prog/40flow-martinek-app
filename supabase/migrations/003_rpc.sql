@@ -53,7 +53,7 @@ begin
     nullif(p->>'datum_ukonceni', '')::date,
     coalesce(p->>'stav_vztahu', ''),
     nullif(p->>'obchodnik_id', '')::uuid,
-    nullif(p->>'lead_agent', '')::uuid,
+    coalesce((p->>'lead_agent')::boolean, false),
     coalesce(p->>'ida_url', ''),
     -- email/telefon jsou ODVOZENÉ z onboarding jsonb — jediná cesta zápisu
     coalesce(p->'onboarding'->>'email', ''),
