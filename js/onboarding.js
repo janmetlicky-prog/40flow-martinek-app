@@ -581,6 +581,9 @@ async function nactiKlientskyRezim() {
     return true;
   } catch (err) {
     $("#klient-uvod").hidden = true;
+    $("#onb-form").hidden = true;          // ani tlačítka, ani ukazatel — jen hláška
+    $("#progress").hidden = true;
+    $("#progress-label").hidden = true;
     $("#klient-neplatny").hidden = false;
     $("#klient-neplatny-text").textContent = err.message;
     return false;
