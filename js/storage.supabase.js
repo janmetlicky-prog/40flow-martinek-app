@@ -170,9 +170,7 @@ function doTabulek(c, kdo) {
     datum_ukonceni: c.datum_ukonceni || "",
     stav_vztahu: c.stav || "",
     obchodnik_id: c.obchodnik_id || "",
-    // DOČASNĚ vynecháno: sloupec je v databázi ještě uuid (migrace 006 čeká na
-    // platný token). Vynechaný klíč = sloupec se nemění. Vrátit po nasazení 006:
-    //   lead_agent: c.lead_agent === true,
+    lead_agent: c.lead_agent === true,
     ida_url: c.ida_url || "",
     onboarding: c.onboarding || {},
     poradce,

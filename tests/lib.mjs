@@ -34,6 +34,20 @@ export async function prihlas(email) {
   return at;
 }
 
+/**
+ * PRAVIDLO PRO VŠECHNY TESTY: nikdy nezapisovat na klienty, které vidí tým
+ * (t0001–t0005 ani cokoli jiného). Test si založí vlastního klienta s prefixem
+ * `test-` a po sobě ho smaže — i když spadne uprostřed (viz sTestovacimiKlienty).
+ * Tahle vrstva to vynucuje: zápis na id bez prefixu `test-` odmítne.
+ */
+export const TEST_PREFIX = "test-";
+
+function overTestovaciId(id) {
+  if (typeof id !== "string" || !id.startsWith(TEST_PREFIX)) {
+    throw new Error(`Test smí zapisovat jen na klienty s prefixem "${TEST_PREFIX}", ne na "${id}".`);
+  }
+}
+
 /** Klient databáze se stejným přístupem, jaký má aplikace v prohlížeči. */
 export function db(at) {
   const h = { apikey: cfg.anon_key, Authorization: `Bearer ${at}`, "Content-Type": "application/json" };
@@ -44,12 +58,35 @@ export function db(at) {
       return r.json();
     },
     async save(p) {
+      overTestovaciId(p && p.id);
       const r = await fetch(`${cfg.url}/rest/v1/rpc/save_klient`, {
         method: "POST", headers: h, body: JSON.stringify({ p }),
       });
       return { ok: r.ok, telo: await r.text() };
     },
+    async smaz(id) {
+      overTestovaciId(id);
+      await fetch(`${cfg.url}/rest/v1/klienti?id=eq.${encodeURIComponent(id)}`, {
+        method: "DELETE", headers: h,
+      });
+    },
   };
+}
+
+/**
+ * Spustí test s vlastními klienty a po skončení je smaže — i po výjimce.
+ * ids: seznam id (musí začínat `test-`), fn: async tělo testu.
+ */
+export async function sTestovacimiKlienty(d, ids, fn) {
+  ids.forEach(overTestovaciId);
+  try {
+    await fn();
+  } finally {
+    for (const id of ids) {
+      try { await d.smaz(id); } catch (e) { console.log(`  (úklid ${id} selhal: ${e.message})`); }
+    }
+    console.log(`\nÚklid: smazáno ${ids.length} testovacích klientů`);
+  }
 }
 
 // --- jednoduché vyhodnocení -------------------------------------------------

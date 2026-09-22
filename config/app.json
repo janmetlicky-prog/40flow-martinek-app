@@ -8,7 +8,7 @@
   "testovaci_rezim": true,
 
   "_mapy": "Našeptávač adres (Mapy.cz). Klíč z developer.mapy.cz, omezený na doménu aplikace. Prázdný = našeptávač se nezobrazí, adresa se píše ručně.",
-  "mapy": { "api_key": "" },
+  "mapy": { "api_key": "srAJ1yHvxHxY872UlUHUkwiRkRfQyCe7eq9RCHZv6UE" },
 
   "_supabase": "Anon key je veřejný — data chrání RLS politiky, ne utajení klíče. Service key sem NIKDY nepatří.",
   "supabase": {
