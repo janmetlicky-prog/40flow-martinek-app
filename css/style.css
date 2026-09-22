@@ -306,3 +306,16 @@ a.mode-toggle { text-decoration: none; display: inline-block; line-height: 1.2; 
 .onb-dok-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--gray-100); }
 .onb-dok-row select { padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
 .onb-dok-row .dok-vlastni { font-size: 11px; color: var(--text-muted); margin-left: 6px; }
+
+/* --- Klientský režim formuláře --------------------------------------------- */
+.onb-klient-uvod { background: var(--gray-50); border-left: 4px solid var(--accent); border-radius: 0 var(--radius) var(--radius) 0; padding: 12px 16px; font-size: 14px; margin-bottom: 18px; }
+.onb-klient-neplatny { text-align: center; padding: 48px 20px; }
+.onb-klient-neplatny .logo-mark { width: 56px; height: 56px; font-size: 24px; margin: 0 auto 16px; }
+.onb-klient-neplatny p { color: var(--text-muted); }
+body.rezim-klient #btn-save-storage, body.rezim-klient #btn-download, body.rezim-klient #done { display: none !important; }
+#klient-hotovo ul { text-align: left; display: inline-block; margin: 8px auto; }
+/* --- Karta: odkaz pro klienta a změny od klienta --------------------------- */
+.odkaz-panel, .zmeny-panel { background: var(--gray-50); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 12px 16px; margin: 12px 0; font-size: 13px; }
+.odkaz-radek { display: flex; gap: 8px; margin: 8px 0; }
+.odkaz-radek input { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--mono, monospace); font-size: 12px; }
+.zmeny-hlava { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

@@ -100,6 +100,66 @@ class SupabaseStorage {
   async rebuildIndex() {
     return this.listClients();
   }
+
+  // --- odkaz pro klienta ----------------------------------------------------
+  // Token se vygeneruje tady (32 B), do databáze jde jen jeho SHA-256.
+  // Samotný token uvidí poradce jednou — v odkazu, který zkopíruje.
+
+  async aktivniOdkaz(klientId) {
+    const r = await this._rest(`klient_pristup?klient_id=eq.${encodeURIComponent(klientId)}&aktivni=eq.true&select=id,platnost_do,vytvoreno,pouzito_naposledy`);
+    return r[0] || null;
+  }
+
+  async vytvorOdkaz(klientId, vytvoril) {
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    const token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+    const token_hash = [...new Uint8Array(hashBuf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+    await this.zneplatnitOdkaz(klientId);   // jeden aktivní odkaz na klienta
+    await this._rest("klient_pristup", {
+      method: "POST",
+      body: JSON.stringify({ klient_id: klientId, token_hash, aktivni: true, vytvoril: vytvoril || null }),
+    });
+    const url = new URL(`onboarding.html?klient=${encodeURIComponent(klientId)}&k=${token}`, location.href).href;
+    return { url, platnost_do: new Date(Date.now() + 30 * 86400_000).toISOString() };
+  }
+
+  async zneplatnitOdkaz(klientId) {
+    await this._rest(`klient_pristup?klient_id=eq.${encodeURIComponent(klientId)}&aktivni=eq.true`, {
+      method: "PATCH",
+      body: JSON.stringify({ aktivni: false }),
+    });
+  }
+
+  /** Změny provedené klientem, které si poradce ještě neprošel. */
+  async neprohlednuteZmeny(klientId) {
+    return this._rest(`onboarding_zmeny?klient_id=eq.${encodeURIComponent(klientId)}&zobrazeno=eq.false&select=id,pole,stara,nova,kdy&order=kdy.asc`);
+  }
+  async oznacZmenyZobrazene(klientId) {
+    await this._rest(`onboarding_zmeny?klient_id=eq.${encodeURIComponent(klientId)}&zobrazeno=eq.false`, {
+      method: "PATCH", body: JSON.stringify({ zobrazeno: true }),
+    });
+  }
+
+  // --- klientský režim (bez účtu, přes token) --------------------------------
+  async _fn(nazev, body) {
+    let r;
+    try {
+      r = await fetch(`${this.url}/functions/v1/${nazev}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      });
+    } catch {
+      throw new StorageError("offline", "Nelze se připojit — zkontrolujte internetové připojení.");
+    }
+    const telo = await r.json().catch(() => ({}));
+    if (r.status === 401) throw new StorageError("neplatny_odkaz", "Odkaz není platný nebo vypršel. Požádejte svého poradce o nový.");
+    if (r.status === 429) throw new StorageError("limit", "Příliš mnoho pokusů. Zkuste to prosím za hodinu.");
+    if (r.status === 409) throw new StorageError("konflikt", "Poradce mezitím údaje upravil. Obnovte stránku a zkuste to znovu.");
+    if (!r.ok) throw new StorageError("chyba", "Uložení se nezdařilo. Zkuste to prosím znovu.");
+    return telo;
+  }
+  klientPristup(token) { return this._fn("klient_pristup", { token }); }
+  klientUlozit(token, onboarding) { return this._fn("klient_ulozit", { token, onboarding }); }
 }
 
 // ---------------------------------------------------------------------------

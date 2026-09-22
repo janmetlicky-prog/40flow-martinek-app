@@ -347,11 +347,14 @@ function renderDetail(c) {
           <a class="mode-toggle" id="formular-otevrit" target="_blank" rel="noopener"
              href="onboarding.html?klient=${esc(c.id)}"
              title="${c.onboarding ? "Otevře formulář předvyplněný údaji z karty — upravíte a uložíte." : "Otevře vstupní dotazník tohoto klienta — vyplníte ho vy na schůzce."}">${c.onboarding ? "Upravit ve formuláři" : "Vyplnit vstupní formulář"}</a>
-          <button class="mode-toggle" id="formular-odkaz"
+          <button class="mode-toggle" id="odkaz-klient-btn" title="Vygeneruje odkaz, přes který klient sám doplní údaje a nahraje dokumenty. Platí 30 dní.">Vytvořit odkaz pro klienta</button>
+          <button class="mode-toggle" id="formular-odkaz" hidden
              title="Zkopíruje odkaz na dotazník, který pošlete klientovi">Kopírovat odkaz pro klienta</button>
           <button class="mode-toggle" id="copy4fin-btn" title="Zobrazí všechna pole v pořadí formuláře 4fin, aby se daly rychle přenést do CRM">Kopírovat do 4fin</button>
         </div>
       </div>
+      <div id="odkaz-panel" class="odkaz-panel" hidden></div>
+      <div id="zmeny-panel" class="zmeny-panel" hidden></div>
       <div id="copy4fin-panel" hidden></div>
       <div id="normal-panel"></div>
     </div>`;
@@ -463,6 +466,14 @@ function renderDetail(c) {
     c.lead_agent = e.target.checked;
     markDirty(c.id);
   });
+  // Odkaz pro klienta + změny od klienta (jen ostrý režim — demo tyhle metody nemá)
+  if (Storage.vytvorOdkaz) {
+    nactiOdkazPanel(c);
+    nactiZmenyPanel(c);
+  } else {
+    $("#odkaz-klient-btn").hidden = true;
+  }
+
   // Úprava jména / příjmení / firmy přímo v kartě
   $("#jmeno-upravit").addEventListener("click", () => {
     $("#jmeno-zobraz").hidden = true;
@@ -741,6 +752,91 @@ function renderClientData(c) {
   const dokumenty = docs ? `<h3 style="border:none;margin-bottom:4px">Dokumenty</h3><div style="font-size:13px">${docs}</div>` : "";
 
   return kontakt + bilance + smlouvy + dokumenty;
+}
+
+// ---------------------------------------------------------------------------
+// Odkaz pro klienta
+// ---------------------------------------------------------------------------
+async function nactiOdkazPanel(c) {
+  const panel = $("#odkaz-panel");
+  const btn = $("#odkaz-klient-btn");
+  let aktivni = null;
+  try { aktivni = await Storage.aktivniOdkaz(c.id); } catch { /* panel zůstane skrytý */ }
+
+  const vykresli = (nove) => {
+    if (!aktivni && !nove) { panel.hidden = true; btn.textContent = "Vytvořit odkaz pro klienta"; return; }
+    btn.textContent = "Nový odkaz pro klienta";
+    const platnost = fmtCas((nove || aktivni).platnost_do);
+    panel.hidden = false;
+    panel.innerHTML = nove
+      ? `<div><strong>Odkaz pro klienta je vytvořený.</strong> Zkopírujte ho teď — podruhé se už nezobrazí.</div>
+         <div class="odkaz-radek"><input readonly id="odkaz-url" value="${esc(nove.url)}"><button class="mode-toggle active" id="odkaz-kopirovat">Kopírovat</button></div>
+         <div class="muted-small">Platí do ${platnost}. <button class="onb-add-btn" id="odkaz-zneplatnit">Zneplatnit odkaz</button></div>`
+      : `<div>Klient má aktivní odkaz (vytvořen ${fmtCas(aktivni.vytvoreno)}${aktivni.pouzito_naposledy ? `, naposledy otevřen ${fmtCas(aktivni.pouzito_naposledy)}` : ", zatím neotevřen"}), platí do ${platnost}.
+           Samotný odkaz se znovu nezobrazuje — když ho klient ztratil, vytvořte nový.</div>
+         <div class="muted-small" style="margin-top:6px"><button class="onb-add-btn" id="odkaz-zneplatnit">Zneplatnit odkaz</button></div>`;
+    $("#odkaz-kopirovat")?.addEventListener("click", async () => {
+      await navigator.clipboard.writeText($("#odkaz-url").value);
+      $("#odkaz-kopirovat").textContent = "Zkopírováno ✓";
+    });
+    $("#odkaz-zneplatnit").addEventListener("click", async () => {
+      if (!confirm("Zneplatnit odkaz? Klient se přes něj už nedostane.")) return;
+      try { await Storage.zneplatnitOdkaz(c.id); aktivni = null; vykresli(null); $("#save-status").textContent = "Odkaz zneplatněn."; }
+      catch (err) { showError(err); }
+    });
+  };
+  vykresli(null);
+
+  btn.onclick = async () => {
+    if (aktivni && !confirm("Klient už jeden odkaz má. Vytvořit nový? Starý přestane platit.")) return;
+    btn.disabled = true;
+    try {
+      const nove = await Storage.vytvorOdkaz(c.id, session.id || null);
+      aktivni = { platnost_do: nove.platnost_do, vytvoreno: new Date().toISOString() };
+      vykresli(nove);
+    } catch (err) { showError(err); }
+    finally { btn.disabled = false; }
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Změny od klienta — „klient upravil N polí"
+// ---------------------------------------------------------------------------
+const POLE_NAZVY = {
+  telefon: "Telefon", email: "E-mail", adresa_trvala: "Trvalá adresa", adresa_korespondencni: "Korespondenční adresa",
+  adresa_korespondencni_shodna: "Korespondenční = trvalá", rodinny_stav: "Rodinný stav", povolani: "Povolání",
+  zdroj_prijmu: "Zdroj příjmů", bilance: "Finanční bilance", smlouvy: "Aktivní smlouvy",
+};
+function hodnotaText(v) {
+  if (v == null || v === "") return "—";
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) return v.length ? v.map((x) => typeof x === "object" ? Object.values(x).filter(Boolean).join(" · ") : String(x)).join("; ") : "—";
+  if (v.ulice !== undefined) return [[v.ulice, v.cislo].filter(Boolean).join(" "), v.mesto, v.psc].filter(Boolean).join(", ") || "—";
+  if (v.prijmy) return ["prijmy", "vydaje", "zavazky"].map((g) => `${g}: ${(v[g] || []).map((i) => `${i.popis} ${i.castka}`).join(", ") || "—"}`).join(" | ");
+  return JSON.stringify(v);
+}
+async function nactiZmenyPanel(c) {
+  const panel = $("#zmeny-panel");
+  let zmeny = [];
+  try { zmeny = await Storage.neprohlednuteZmeny(c.id); } catch { return; }
+  if (!zmeny.length) { panel.hidden = true; return; }
+  const pole = new Set(zmeny.map((z) => z.pole));
+  panel.hidden = false;
+  panel.innerHTML = `
+    <div class="zmeny-hlava">
+      <span class="src-badge client">klient</span>
+      <strong>Klient upravil ${pole.size} ${pole.size === 1 ? "pole" : pole.size < 5 ? "pole" : "polí"}</strong>
+      <button class="onb-add-btn" id="zmeny-ukazat">Zobrazit co</button>
+      <button class="onb-add-btn" id="zmeny-hotovo">Prošel jsem, skrýt</button>
+    </div>
+    <table class="mini-table" id="zmeny-tabulka" hidden>
+      <thead><tr><th>Pole</th><th>Bylo</th><th>Je</th><th>Kdy</th></tr></thead>
+      <tbody>${zmeny.map((z) => `<tr><td>${esc(POLE_NAZVY[z.pole] || z.pole)}</td><td>${esc(hodnotaText(z.stara))}</td><td>${esc(hodnotaText(z.nova))}</td><td class="muted-small">${fmtCas(z.kdy)}</td></tr>`).join("")}</tbody>
+    </table>`;
+  $("#zmeny-ukazat").addEventListener("click", () => { $("#zmeny-tabulka").hidden = !$("#zmeny-tabulka").hidden; });
+  $("#zmeny-hotovo").addEventListener("click", async () => {
+    try { await Storage.oznacZmenyZobrazene(c.id); panel.hidden = true; } catch (err) { showError(err); }
+  });
 }
 
 /**

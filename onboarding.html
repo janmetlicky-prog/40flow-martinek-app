@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bohatněte s rozumem — Vstupní dotazník</title>
-  <link rel="stylesheet" href="css/style.css?v=202609230005">
+  <link rel="stylesheet" href="css/style.css?v=202609230018">
 </head>
 <body>
 
@@ -18,6 +18,19 @@
       <span class="logo-mark">B</span>
       <h1>Vstupní dotazník</h1>
       <div class="claim">Pomáháme lidem i firmám dělat chytrá finanční rozhodnutí.</div>
+    </div>
+
+    <!-- Klientský režim (odkaz s tokenem) -->
+    <div class="onb-klient-uvod" id="klient-uvod" hidden>Načítám…</div>
+    <div class="onb-klient-neplatny" id="klient-neplatny" hidden>
+      <span class="logo-mark">B</span>
+      <h2>Odkaz není platný nebo vypršel</h2>
+      <p id="klient-neplatny-text">Požádejte svého poradce o nový.</p>
+    </div>
+    <div class="onb-done" id="klient-hotovo" hidden>
+      <span class="logo-mark">✓</span>
+      <h2>Odesláno poradci</h2>
+      <div id="klient-hotovo-chybi"></div>
     </div>
 
     <div class="onb-testdata-note" id="draft-note" hidden>
@@ -43,6 +56,7 @@
         </div>
       </div>
       <div class="onb-progress-label" id="draft-status" style="margin-top:10px"></div>
+      <div class="login-error" id="klient-chyba" style="margin-top:8px"></div>
     </form>
 
     <div class="onb-done" id="done" hidden>
@@ -55,13 +69,13 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=202609230005"></script>
-  <script src="js/app-config.js?v=202609230005"></script>
-  <script src="js/auth.js?v=202609230005"></script>
-  <script src="js/storage.demo.js?v=202609230005"></script>
-  <script src="js/storage.supabase.js?v=202609230005"></script>
-  <script src="js/storage.js?v=202609230005"></script>
-  <script src="js/mapper.js?v=202609230005"></script>
-  <script src="js/onboarding.js?v=202609230005"></script>
+  <script src="js/config.js?v=202609230018"></script>
+  <script src="js/app-config.js?v=202609230018"></script>
+  <script src="js/auth.js?v=202609230018"></script>
+  <script src="js/storage.demo.js?v=202609230018"></script>
+  <script src="js/storage.supabase.js?v=202609230018"></script>
+  <script src="js/storage.js?v=202609230018"></script>
+  <script src="js/mapper.js?v=202609230018"></script>
+  <script src="js/onboarding.js?v=202609230018"></script>
 </body>
 </html>

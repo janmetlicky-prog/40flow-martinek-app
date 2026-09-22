@@ -13,7 +13,9 @@ const $ = (sel) => document.querySelector(sel);
 
 const PARAMS = new URLSearchParams(location.search);
 const KLIENT_ID = PARAMS.get("klient") || "";
-const DRAFT_KEY = `40flow_onb_draft_${KLIENT_ID || "novy"}`;
+const KLIENT_TOKEN = PARAMS.get("k") || "";          // klientský režim: odkaz s tokenem
+const REZIM_KLIENT = !!KLIENT_TOKEN;
+const DRAFT_KEY = `40flow_onb_draft_${REZIM_KLIENT ? "k_" : ""}${KLIENT_ID || "novy"}`;
 const MAX_FILE_MB = 5;
 
 // ---------------------------------------------------------------------------
@@ -266,12 +268,17 @@ function dokumentyHtml() {
     if (d.smazano) return "";
     const opts = stavy.map(([k, v]) => `<option value="${k}" ${d.stav === k ? "selected" : ""}>${esc(v)}</option>`).join("");
     const zamek = d.stav === "ceka_na_kontrolu" ? `<option value="ceka_na_kontrolu" selected>${esc(DOK_CFG.stavy.ceka_na_kontrolu)}</option>` : "";
+    if (REZIM_KLIENT) {
+      return `<div class="onb-dok-row" data-idx="${i}"><span>${esc(d.nazev)}</span>
+        <span class="muted-small">${esc((DOK_CFG.stavy || {})[d.stav] || d.stav)}</span></div>`;
+    }
     return `<div class="onb-dok-row" data-idx="${i}">
       <span>${esc(d.nazev)}${d.checklist_klic ? "" : `<span class="dok-vlastni">vlastní</span>`}</span>
       <span><select class="dok-stav">${zamek}${opts}</select>
         ${d.checklist_klic ? "" : `<button type="button" class="item-del dok-del" title="Odebrat">×</button>`}</span>
     </div>`;
   }).join("");
+  if (REZIM_KLIENT) return rows || `<p class="muted-small">Zatím žádné dokumenty k dodání.</p>`;
   return `${rows}
     <div class="dok-add-row" style="margin-top:12px">
       <input id="dok-novy" placeholder="další dokument, např. smlouva o dílo">
@@ -310,7 +317,7 @@ function renderStep() {
     `<div class="seg ${i <= step ? "done" : ""}"></div>`).join("");
   $("#progress-label").textContent = `Krok ${step + 1} z ${STEPS.length} — ${s.title}`;
   $("#btn-prev").style.visibility = step === 0 ? "hidden" : "visible";
-  $("#btn-next").textContent = step === STEPS.length - 1 ? "Odeslat" : "Pokračovat →";
+  $("#btn-next").textContent = step === STEPS.length - 1 ? (REZIM_KLIENT ? "Odeslat poradci" : "Odeslat") : "Pokračovat →";
 
   bindStepEvents(s);
 }
@@ -350,7 +357,7 @@ function bindStepEvents(s) {
       renderStep();
     }));
   }
-  if (s.type === "dokumenty") {
+  if (s.type === "dokumenty" && !REZIM_KLIENT) {
     $("#dok-add").addEventListener("click", () => {
       const nazev = $("#dok-novy").value.trim();
       if (!nazev) return;
@@ -462,9 +469,10 @@ function collectStep() {
     return true;
   }
   if (s.type === "dokumenty") {
-    document.querySelectorAll(".onb-dok-row").forEach((row) => {
+    if (!REZIM_KLIENT) document.querySelectorAll(".onb-dok-row").forEach((row) => {
       const d = data.dokumenty[Number(row.dataset.idx)];
-      if (d) d.stav = row.querySelector(".dok-stav").value;
+      const sel = row.querySelector(".dok-stav");
+      if (d && sel) d.stav = sel.value;
     });
     return true;
   }
@@ -526,6 +534,7 @@ function buildRecord() {
 
 function finish() {
   record = buildRecord();
+  if (REZIM_KLIENT) { odesliPoradci(); return; }
   $("#onb-form").hidden = true;
   $("#progress").hidden = true;
   $("#progress-label").hidden = true;
@@ -533,6 +542,48 @@ function finish() {
   if (Storage.umiZapisovat && Storage.umiZapisovat()) {
     $("#btn-save-storage").hidden = false;
     $("#done-hint").textContent = "Údaje můžete uložit rovnou do systému, nebo si je stáhnout jako soubor.";
+  }
+}
+
+/** Klientský režim: odeslání změn přes edge funkci (bez účtu, s tokenem). */
+async function odesliPoradci() {
+  const btn = $("#btn-next");
+  btn.disabled = true; btn.textContent = "Odesílám…";
+  try {
+    const out = await Storage.klientUlozit(KLIENT_TOKEN, record.onboarding);
+    clearDraft();
+    $("#onb-form").hidden = true; $("#progress").hidden = true; $("#progress-label").hidden = true;
+    const chybi = (out.chybi || []);
+    $("#klient-hotovo").hidden = false;
+    $("#klient-hotovo-chybi").innerHTML = chybi.length
+      ? `<p>Ještě nám chybí:</p><ul>${chybi.map((x) => `<li>${esc(x)}</li>`).join("")}</ul><p class="muted-small">Můžete doplnit kdykoli — odkaz platí dál.</p>`
+      : `<p>Máme od vás všechno potřebné. Děkujeme.</p>`;
+    window.scrollTo({ top: 0 });
+  } catch (err) {
+    $("#klient-chyba").textContent = err.message;
+    btn.disabled = false; btn.textContent = "Odeslat poradci";
+  }
+}
+
+/** Klientský režim: načtení vlastní části dat přes token. Neplatný odkaz = jediná hláška. */
+async function nactiKlientskyRezim() {
+  document.body.classList.add("rezim-klient");
+  $("#klient-uvod").hidden = false;
+  try {
+    const d = await Storage.klientPristup(KLIENT_TOKEN);
+    const jm = `${d.klient.jmeno || ""} ${d.klient.prijmeni || ""}`.trim();
+    $("#klient-uvod").innerHTML = `Dobrý den${jm ? `, ${esc(jm)}` : ""}, <strong>${esc(d.klient.poradce)}</strong> vás požádal o doplnění údajů. Odkaz platí do ${fmtDatum(d.platnost_do)}.`;
+    puvodniOnboarding = d.onboarding;
+    naplnZOnboardingu(d.onboarding);
+    // dokumenty: klient vidí jen název a stav, nemění je (upload přijde v dalším kroku)
+    klientDokumenty = d.dokumenty.map((x) => ({ ...x, checklist_klic: "", jenCteni: true }));
+    data.dokumenty = klientDokumenty;
+    return true;
+  } catch (err) {
+    $("#klient-uvod").hidden = true;
+    $("#klient-neplatny").hidden = false;
+    $("#klient-neplatny-text").textContent = err.message;
+    return false;
   }
 }
 
@@ -602,8 +653,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (typeof Auth !== "undefined") Auth.obnov();
   try { vytvorStorage(APP); } catch { /* formulář jde vyplnit i bez úložiště */ }
 
+  if (REZIM_KLIENT) {
+    if (!(Storage.klientPristup) || !(await nactiKlientskyRezim())) return;   // neplatný odkaz: nic dalšího
+  }
   // Režim poradce: předvyplnit z karty (upravit existující dotazník)
-  if (KLIENT_ID && Storage.umiZapisovat && Storage.umiZapisovat()) {
+  if (!REZIM_KLIENT && KLIENT_ID && Storage.umiZapisovat && Storage.umiZapisovat()) {
     try {
       const c = await Storage.loadClient(KLIENT_ID);
       klientDokumenty = c.dokumenty || [];
