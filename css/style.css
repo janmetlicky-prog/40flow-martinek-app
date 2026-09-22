@@ -281,3 +281,19 @@ a.mode-toggle { text-decoration: none; display: inline-block; line-height: 1.2; 
 /* Zaškrtávátko v kartě (Lead Agent) */
 .check-inline { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; color: var(--text); cursor: pointer; }
 .check-inline input { width: 15px; height: 15px; accent-color: var(--ink); }
+
+/* --- Formulář: adresa, bilance, návrhy adres ------------------------------ */
+.onb-h4 { font-size: 13px; font-weight: 600; margin: 18px 0 8px; }
+.onb-adresa { display: grid; grid-template-columns: 2fr 1fr; gap: 12px 16px; }
+.onb-adresa .full { grid-column: 1 / -1; }
+.onb-adresa-hledat { position: relative; }
+.adr-navrhy { position: absolute; left: 0; right: 0; top: 100%; z-index: 20; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.adr-navrh { display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--gray-100); padding: 8px 12px; font-size: 13px; }
+.adr-navrh span { display: block; font-size: 11px; color: var(--text-muted); }
+.adr-navrh:hover, .adr-navrh:focus-visible { background: var(--gray-100); outline: none; }
+.onb-group-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.onb-soucet { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--text-muted); }
+.onb-bilance-rozdil { display: flex; justify-content: space-between; align-items: baseline; border-top: 2px solid var(--ink); padding-top: 10px; margin-top: 6px; font-size: 14px; }
+.onb-bilance-rozdil strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+.onb-bilance-rozdil strong.zaporny { color: #b02020; }
+@media (max-width: 520px) { .onb-adresa { grid-template-columns: 1fr; } }

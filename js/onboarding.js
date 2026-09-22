@@ -1,13 +1,19 @@
-/* Klientský onboarding — sbírá JEN to, co klient sám dodává.
+/* Vstupní formulář — klientská část údajů.
    Rodné číslo, doklady, bankovní účet, segmentace, daňové rezidentství → vyplňuje
-   poradce v kartě klienta, tady záměrně nejsou.
-   Rozpracované vyplnění se průběžně ukládá do localStorage (návrat později). */
+   poradce v kartě klienta, tady záměrně nejsou a ani se nevykreslují.
+
+   Režimy:
+     - poradce (přihlášen): předvyplní se z karty, uloží přes Storage.saveClient
+     - bez přihlášení: na konci stažení souboru (klientský režim s tokenem = blok B)
+
+   Rozpracované vyplnění se ukládá do localStorage per klient. */
 "use strict";
 
 const $ = (sel) => document.querySelector(sel);
 
-const DRAFT_KEY = "40flow_onb_draft";
-const KLIENT_ID = new URLSearchParams(location.search).get("klient") || "";
+const PARAMS = new URLSearchParams(location.search);
+const KLIENT_ID = PARAMS.get("klient") || "";
+const DRAFT_KEY = `40flow_onb_draft_${KLIENT_ID || "novy"}`;
 const MAX_FILE_MB = 5;
 
 // ---------------------------------------------------------------------------
@@ -18,11 +24,10 @@ const STEPS = [
     id: "kontakt",
     title: "Kontakt",
     hint: "Údaje, přes které vás poradce zastihne.",
+    type: "kontakt",
     fields: [
       { key: "telefon", label: "Telefon", required: true, value: "+420 ", validate: "tel", placeholder: "+420 777 123 456" },
       { key: "email", label: "E-mail", required: true, validate: "email", placeholder: "jmeno@email.cz" },
-      { key: "adresa_trvala", label: "Trvalá adresa (ulice a č.p., město, PSČ)", required: true, full: true },
-      { key: "adresa_korespondencni", label: "Korespondenční adresa (pokud se liší)", full: true },
     ],
   },
   {
@@ -61,23 +66,35 @@ const STEPS = [
   },
 ];
 
+const ADRESA_PRAZDNA = () => ({ ulice: "", cislo: "", mesto: "", psc: "" });
+
 let step = 0;
-let data = {
-  bilance: { prijmy: [], vydaje: [], zavazky: [] },
-  smlouvy: [],
-  dokumenty: [],
-};
+let data = prazdnaData();
 let record = null;
+let puvodniOnboarding = null;   // režim poradce: co bylo v kartě před úpravou
+
+function prazdnaData() {
+  return {
+    adresa_trvala: ADRESA_PRAZDNA(),
+    adresa_korespondencni: ADRESA_PRAZDNA(),
+    adresa_korespondencni_shodna: true,
+    bilance: { prijmy: [], vydaje: [], zavazky: [] },
+    smlouvy: [],
+    dokumenty: [],
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Validace
 // ---------------------------------------------------------------------------
 const VALIDATORS = {
-  email: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) ? "" : "Neplatný e-mail.",
+  email: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) ? "" : "Zadejte e-mail ve tvaru jmeno@domena.cz.",
   tel(v) {
-    const digits = v.replace(/[\s\-()]/g, "");
-    return /^(\+\d{1,3})?\d{9}$/.test(digits) ? "" : "Telefon: 9 číslic, volitelně s předvolbou (+420).";
+    // české formáty: 777 123 456, +420 777 123 456, 00420777123456, 777123456
+    const digits = v.replace(/[\s\-().]/g, "").replace(/^00/, "+");
+    return /^(\+\d{1,3})?\d{9}$/.test(digits) ? "" : "Telefon zadejte jako 9 číslic, případně s předvolbou +420. Mezery nevadí.";
   },
+  psc: (v) => /^\d{5}$/.test(v.replace(/\s/g, "")) ? "" : "PSČ má 5 číslic.",
 };
 
 // ---------------------------------------------------------------------------
@@ -85,32 +102,54 @@ const VALIDATORS = {
 // ---------------------------------------------------------------------------
 function saveDraft() {
   try {
-    // dokumenty (base64) do draftu nepatří — localStorage má malý limit
-    const { dokumenty, ...rest } = data;
+    const { dokumenty, ...rest } = data;   // base64 souborů do localStorage nepatří
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ step, data: rest, saved_at: new Date().toISOString() }));
   } catch { /* plný storage — draft je jen pohodlí */ }
 }
 
-function loadDraft() {
+function readDraft() {
   try {
     const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return false;
-    const draft = JSON.parse(raw);
-    data = { ...data, ...draft.data, dokumenty: [] };
-    step = Math.min(draft.step ?? 0, STEPS.length - 1);
-    return true;
-  } catch { return false; }
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function applyDraft(draft) {
+  data = { ...prazdnaData(), ...draft.data, dokumenty: [] };
+  step = Math.min(draft.step ?? 0, STEPS.length - 1);
 }
 
 function clearDraft() {
   try { localStorage.removeItem(DRAFT_KEY); } catch { /* noop */ }
 }
 
+function fmtDatum(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? "" : d.toLocaleString("cs-CZ", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+// ---------------------------------------------------------------------------
+// Peníze
+// ---------------------------------------------------------------------------
+function castka(v) {
+  const n = Number(String(v ?? "").replace(/\s/g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
+function fmtKc(n) {
+  const abs = Math.abs(Math.round(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return `${n < 0 ? "−" : ""}${abs} Kč`;
+}
+function soucty() {
+  const s = (g) => data.bilance[g].reduce((a, it) => a + castka(it.castka), 0);
+  const prijmy = s("prijmy"), vydaje = s("vydaje"), zavazky = s("zavazky");
+  return { prijmy, vydaje, zavazky, rozdil: prijmy - vydaje - zavazky };
+}
+
 // ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
 function esc(s) {
-  return String(s).replace(/[&<>"']/g, (ch) => ({
+  return String(s ?? "").replace(/[&<>"']/g, (ch) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   })[ch]);
 }
@@ -134,6 +173,38 @@ function fieldHtml(f) {
     <input type="text" name="${f.key}" value="${esc(val)}" placeholder="${esc(f.placeholder || "")}"><div class="err"></div></div>`;
 }
 
+/** Blok adresy: ulice / číslo / město / PSČ. `prefix` = trvala | korespondencni. */
+function adresaHtml(prefix, a, povinna) {
+  const req = povinna ? ` <span class="req">*</span>` : "";
+  return `
+    <div class="onb-adresa" data-adresa="${prefix}">
+      <div class="onb-field full onb-adresa-hledat" data-suggest="${prefix}">
+        <label>Hledat adresu${req}</label>
+        <input type="text" class="adr-hledat" placeholder="začněte psát ulici a město…" autocomplete="off">
+        <div class="adr-navrhy" hidden></div>
+      </div>
+      <div class="onb-field"><label>Ulice</label><input class="adr-ulice" value="${esc(a.ulice)}"></div>
+      <div class="onb-field"><label>Č. p. / č. o.</label><input class="adr-cislo" value="${esc(a.cislo)}" placeholder="123/4"></div>
+      <div class="onb-field"><label>Město</label><input class="adr-mesto" value="${esc(a.mesto)}"></div>
+      <div class="onb-field"><label>PSČ</label><input class="adr-psc" value="${esc(a.psc)}" inputmode="numeric" placeholder="110 00"><div class="err"></div></div>
+    </div>`;
+}
+
+function kontaktHtml(s) {
+  const shodna = data.adresa_korespondencni_shodna !== false;
+  return `
+    <div class="onb-grid">${s.fields.map(fieldHtml).join("")}</div>
+    <h4 class="onb-h4">Trvalá adresa <span class="req">*</span></h4>
+    ${adresaHtml("trvala", data.adresa_trvala, false)}
+    <div class="onb-field full" style="margin-top:14px">
+      <label class="check-inline"><input type="checkbox" id="adr-shodna" ${shodna ? "checked" : ""}> Korespondenční adresa je shodná s trvalou</label>
+    </div>
+    <div id="adr-koresp-blok" ${shodna ? "hidden" : ""}>
+      <h4 class="onb-h4">Korespondenční adresa</h4>
+      ${adresaHtml("korespondencni", data.adresa_korespondencni, false)}
+    </div>`;
+}
+
 function bilanceGroupHtml(g) {
   const items = data.bilance[g.key].length ? data.bilance[g.key] : [{ popis: "", castka: "" }];
   const rows = items.map((it, i) => `
@@ -144,20 +215,42 @@ function bilanceGroupHtml(g) {
     </div>`).join("");
   return `
     <div class="onb-bilance-group" data-group="${g.key}">
-      <h4>${g.label}</h4>
+      <div class="onb-group-head"><h4>${g.label}</h4><span class="onb-soucet" data-soucet="${g.key}"></span></div>
       ${rows}
       <button type="button" class="onb-add-btn" data-add-item="${g.key}">+ Přidat položku</button>
     </div>`;
 }
 
+function bilanceHtml(s) {
+  return `${s.groups.map(bilanceGroupHtml).join("")}
+    <div class="onb-bilance-rozdil">
+      <span>Měsíční rozdíl (příjmy − výdaje − závazky)</span>
+      <strong id="bilance-rozdil"></strong>
+    </div>`;
+}
+
+function prepocitejBilanci() {
+  // čte přímo z polí, ať se součty mění při psaní
+  const s = (g) => [...document.querySelectorAll(`.onb-item-row[data-group="${g}"] .item-castka`)]
+    .reduce((a, i) => a + castka(i.value), 0);
+  const prijmy = s("prijmy"), vydaje = s("vydaje"), zavazky = s("zavazky");
+  const rozdil = prijmy - vydaje - zavazky;
+  for (const [g, v] of [["prijmy", prijmy], ["vydaje", vydaje], ["zavazky", zavazky]]) {
+    const el = document.querySelector(`[data-soucet="${g}"]`);
+    if (el) el.textContent = fmtKc(v);
+  }
+  const r = $("#bilance-rozdil");
+  if (r) { r.textContent = fmtKc(rozdil); r.classList.toggle("zaporny", rozdil < 0); }
+}
+
 function smlouvyHtml() {
-  const items = data.smlouvy.length ? data.smlouvy : [{ typ: "", instituce: "", platba: "", poznamka: "" }];
+  const items = data.smlouvy.length ? data.smlouvy : [{ typ: "", instituce: "", mesicni_platba: "", poznamka: "" }];
   const rows = items.map((s, i) => `
     <div class="onb-smlouva" data-idx="${i}">
       <div class="onb-grid">
         <div class="onb-field"><label>Typ produktu</label><input class="sm-typ" value="${esc(s.typ)}" placeholder="např. životní pojištění"></div>
-        <div class="onb-field"><label>Instituce</label><input class="sm-instituce" value="${esc(s.instituce)}" placeholder="např. Kooperativa"></div>
-        <div class="onb-field"><label>Měsíční platba (Kč)</label><input class="sm-platba" value="${esc(s.platba)}" inputmode="numeric"></div>
+        <div class="onb-field"><label>Instituce</label><input class="sm-instituce" value="${esc(s.instituce)}" placeholder="např. pojišťovna, banka"></div>
+        <div class="onb-field"><label>Měsíční platba (Kč)</label><input class="sm-platba" value="${esc(s.mesicni_platba ?? s.platba ?? "")}" inputmode="numeric"></div>
         <div class="onb-field"><label>Poznámka</label><input class="sm-poznamka" value="${esc(s.poznamka)}"></div>
       </div>
       <button type="button" class="item-del sm-del" title="Odebrat smlouvu">× Odebrat</button>
@@ -183,7 +276,8 @@ function dokumentyHtml() {
 function renderStep() {
   const s = STEPS[step];
   let body;
-  if (s.type === "bilance") body = s.groups.map(bilanceGroupHtml).join("");
+  if (s.type === "kontakt") body = kontaktHtml(s);
+  else if (s.type === "bilance") body = bilanceHtml(s);
   else if (s.type === "smlouvy") body = smlouvyHtml();
   else if (s.type === "dokumenty") body = dokumentyHtml();
   else body = `<div class="onb-grid">${s.fields.map(fieldHtml).join("")}</div>`;
@@ -205,6 +299,13 @@ function renderStep() {
 }
 
 function bindStepEvents(s) {
+  if (s.type === "kontakt") {
+    $("#adr-shodna").addEventListener("change", (e) => {
+      $("#adr-koresp-blok").hidden = e.target.checked;
+      data.adresa_korespondencni_shodna = e.target.checked;
+    });
+    document.querySelectorAll("[data-suggest]").forEach(zapniNaseptavac);
+  }
   if (s.type === "bilance") {
     document.querySelectorAll("[data-add-item]").forEach((btn) => btn.addEventListener("click", () => {
       collectStep();
@@ -217,11 +318,13 @@ function bindStepEvents(s) {
       data.bilance[row.dataset.group].splice(Number(row.dataset.idx), 1);
       renderStep();
     }));
+    document.querySelectorAll(".item-castka").forEach((i) => i.addEventListener("input", prepocitejBilanci));
+    prepocitejBilanci();
   }
   if (s.type === "smlouvy") {
     $("#add-smlouva")?.addEventListener("click", () => {
       collectStep();
-      data.smlouvy.push({ typ: "", instituce: "", platba: "", poznamka: "" });
+      data.smlouvy.push({ typ: "", instituce: "", mesicni_platba: "", poznamka: "" });
       renderStep();
     });
     document.querySelectorAll(".sm-del").forEach((btn) => btn.addEventListener("click", () => {
@@ -256,8 +359,73 @@ function bindStepEvents(s) {
 }
 
 // ---------------------------------------------------------------------------
+// Našeptávač adres (Mapy.cz). Bez klíče v config/app.json se pole „Hledat
+// adresu" schová a adresa se píše ručně — nic dalšího se nemění.
+// ---------------------------------------------------------------------------
+function zapniNaseptavac(wrap) {
+  const klic = APP.mapy && APP.mapy.api_key;
+  if (!klic) { wrap.hidden = true; return; }
+  const input = wrap.querySelector(".adr-hledat");
+  const box = wrap.querySelector(".adr-navrhy");
+  const blok = wrap.closest(".onb-adresa");
+  let t = null;
+  input.addEventListener("input", () => {
+    clearTimeout(t);
+    const q = input.value.trim();
+    if (q.length < 3) { box.hidden = true; return; }
+    t = setTimeout(async () => {
+      try {
+        const u = new URL("https://api.mapy.cz/v1/suggest");
+        u.search = new URLSearchParams({ query: q, lang: "cs", limit: "6", type: "regional.address", apikey: klic });
+        const r = await fetch(u);
+        if (!r.ok) throw new Error(String(r.status));
+        const items = (await r.json()).items || [];
+        box.innerHTML = items.map((it, i) =>
+          `<button type="button" class="adr-navrh" data-i="${i}">${esc(it.name)}<span>${esc(it.location || "")}</span></button>`).join("");
+        box.hidden = items.length === 0;
+        box.querySelectorAll(".adr-navrh").forEach((b) => b.addEventListener("click", () => {
+          const it = items[Number(b.dataset.i)];
+          const rs = it.regionalStructure || [];
+          const najdi = (typ) => (rs.find((x) => x.type === typ) || {}).name || "";
+          blok.querySelector(".adr-ulice").value = najdi("regional.street") || najdi("regional.municipality_part") || "";
+          blok.querySelector(".adr-cislo").value = najdi("regional.address") || "";
+          blok.querySelector(".adr-mesto").value = najdi("regional.municipality") || "";
+          blok.querySelector(".adr-psc").value = (it.zip || "").replace(/\s/g, "");
+          input.value = it.name + (it.location ? `, ${it.location}` : "");
+          box.hidden = true;
+        }));
+      } catch { box.hidden = true; }
+    }, 250);
+  });
+  document.addEventListener("click", (e) => { if (!wrap.contains(e.target)) box.hidden = true; });
+}
+
+// ---------------------------------------------------------------------------
 // Sběr + validace kroku
 // ---------------------------------------------------------------------------
+function ctiAdresu(prefix) {
+  const b = document.querySelector(`.onb-adresa[data-adresa="${prefix}"]`);
+  return {
+    ulice: b.querySelector(".adr-ulice").value.trim(),
+    cislo: b.querySelector(".adr-cislo").value.trim(),
+    mesto: b.querySelector(".adr-mesto").value.trim(),
+    psc: b.querySelector(".adr-psc").value.replace(/\s/g, ""),
+  };
+}
+
+function overAdresu(prefix, a, povinna) {
+  const b = document.querySelector(`.onb-adresa[data-adresa="${prefix}"]`);
+  const err = b.querySelector(".err");
+  err.textContent = "";
+  const vyplnena = a.ulice || a.cislo || a.mesto || a.psc;
+  if (povinna && !(a.mesto && a.psc)) { err.textContent = "Vyplňte alespoň město a PSČ."; return false; }
+  if (vyplnena && a.psc) {
+    const m = VALIDATORS.psc(a.psc);
+    if (m) { err.textContent = m; return false; }
+  }
+  return true;
+}
+
 function collectStep() {
   const s = STEPS[step];
   let ok = true;
@@ -278,15 +446,15 @@ function collectStep() {
       .map((el) => ({
         typ: el.querySelector(".sm-typ").value.trim(),
         instituce: el.querySelector(".sm-instituce").value.trim(),
-        platba: el.querySelector(".sm-platba").value.trim(),
+        mesicni_platba: el.querySelector(".sm-platba").value.trim(),
         poznamka: el.querySelector(".sm-poznamka").value.trim(),
       }))
-      .filter((sm) => sm.typ || sm.instituce || sm.platba);
+      .filter((sm) => sm.typ || sm.instituce || sm.mesicni_platba);
     return true;
   }
   if (s.type === "dokumenty") return true;
 
-  for (const f of s.fields) {
+  for (const f of s.fields || []) {
     const wrap = document.querySelector(`[data-key="${f.key}"]`);
     const err = wrap.querySelector(".err");
     err.textContent = "";
@@ -299,7 +467,7 @@ function collectStep() {
     }
     data[f.key] = value;
     if (f.required && !value) {
-      err.textContent = "Povinné pole.";
+      err.textContent = "Toto pole je povinné.";
       ok = false;
       continue;
     }
@@ -308,49 +476,67 @@ function collectStep() {
       if (msg) { err.textContent = msg; ok = false; }
     }
   }
+
+  if (s.type === "kontakt") {
+    data.adresa_trvala = ctiAdresu("trvala");
+    data.adresa_korespondencni_shodna = $("#adr-shodna").checked;
+    data.adresa_korespondencni = data.adresa_korespondencni_shodna ? ADRESA_PRAZDNA() : ctiAdresu("korespondencni");
+    if (!overAdresu("trvala", data.adresa_trvala, true)) ok = false;
+    if (!data.adresa_korespondencni_shodna && !overAdresu("korespondencni", data.adresa_korespondencni, false)) ok = false;
+  }
   return ok;
 }
 
 // ---------------------------------------------------------------------------
-// Výstup — záznam pro import do dashboardu
+// Výstup
 // ---------------------------------------------------------------------------
-function buildRecord() {
+function buildOnboarding() {
   return {
-    klient_id: KLIENT_ID, // z odkazu od poradce; párování v dashboardu
-    onboarding_submitted_at: new Date().toISOString(),
-    onboarding: {
-      telefon: data.telefon || "",
-      email: data.email || "",
-      adresa_trvala: data.adresa_trvala || "",
-      adresa_korespondencni: data.adresa_korespondencni || "",
-      rodinny_stav: data.rodinny_stav || "",
-      povolani: data.povolani || "",
-      zdroj_prijmu: data.zdroj_prijmu || "",
-      bilance: data.bilance,
-      smlouvy: data.smlouvy,
-      dokumenty: data.dokumenty,
-    },
+    telefon: data.telefon || "",
+    email: data.email || "",
+    adresa_trvala: data.adresa_trvala,
+    adresa_korespondencni_shodna: data.adresa_korespondencni_shodna !== false,
+    adresa_korespondencni: data.adresa_korespondencni_shodna !== false ? null : data.adresa_korespondencni,
+    rodinny_stav: data.rodinny_stav || "",
+    povolani: data.povolani || "",
+    zdroj_prijmu: data.zdroj_prijmu || "",
+    bilance: data.bilance,
+    smlouvy: data.smlouvy,
+    dokumenty: data.dokumenty,
   };
+}
+
+function buildRecord() {
+  return { klient_id: KLIENT_ID, onboarding_submitted_at: new Date().toISOString(), onboarding: buildOnboarding() };
 }
 
 function finish() {
   record = buildRecord();
-  clearDraft();
   $("#onb-form").hidden = true;
   $("#progress").hidden = true;
   $("#progress-label").hidden = true;
   $("#done").hidden = false;
-
-  // Zapsat rovnou do systému může jen ten, kdo má do databáze přístup —
-  // tedy přihlášený člen týmu, který si formulář zkouší. Klient účet nemá
-  // (jeho přístup přes odkaz s tokenem přijde v dalším kroku), takže vidí
-  // jen stažení souboru. Dřív se tu ptalo na hasToken(), což u Supabase
-  // vracelo vždy true — formulář pak hlásil úspěch, ale data nikam nedošla.
   if (Storage.umiZapisovat && Storage.umiZapisovat()) {
     $("#btn-save-storage").hidden = false;
-    $("#done-hint").textContent =
-      "Údaje můžete uložit rovnou do systému, nebo si je stáhnout jako soubor.";
+    $("#done-hint").textContent = "Údaje můžete uložit rovnou do systému, nebo si je stáhnout jako soubor.";
   }
+}
+
+/** Předvyplnění z karty klienta (režim poradce — „Upravit ve formuláři"). */
+function naplnZOnboardingu(onb) {
+  const adr = (a) => (a && typeof a === "object") ? { ...ADRESA_PRAZDNA(), ...a }
+    : (a ? { ...ADRESA_PRAZDNA(), ulice: String(a) } : ADRESA_PRAZDNA());   // starší záznamy měly adresu jako text
+  data = {
+    ...prazdnaData(),
+    telefon: onb.telefon || "", email: onb.email || "",
+    rodinny_stav: onb.rodinny_stav || "", povolani: onb.povolani || "", zdroj_prijmu: onb.zdroj_prijmu || "",
+    adresa_trvala: adr(onb.adresa_trvala),
+    adresa_korespondencni_shodna: onb.adresa_korespondencni_shodna !== false && !onb.adresa_korespondencni,
+    adresa_korespondencni: adr(onb.adresa_korespondencni),
+    bilance: { prijmy: [], vydaje: [], zavazky: [], ...(onb.bilance || {}) },
+    smlouvy: (onb.smlouvy || []).map((s) => ({ ...s, mesicni_platba: s.mesicni_platba ?? s.platba ?? "" })),
+    dokumenty: [],
+  };
 }
 
 async function saveToStorage() {
@@ -373,18 +559,17 @@ async function saveToStorage() {
         jmeno: "", prijmeni: "(z onboardingu — doplnit jméno)",
         firma: "", stav: "Nový klient", obchodnik: "", dohoda: "",
         datum: new Date().toISOString().slice(0, 10),
-        lead_agent: "", oblacek: "", bilance: "", sdileni: "",
-        poznamka_nzp: "", poznamky_lenka: "",
+        oblacek: "", bilance: "", sdileni: "", poznamka_nzp: "", poznamky_lenka: "",
         oblasti,
         onboarding: record.onboarding,
         onboarding_submitted_at: record.onboarding_submitted_at,
         poradce: {}, komentare: [], schuzky: [], ida_url: "", cile: [],
       };
     }
-    // aktivní smlouvy rozřadit do produktových oblastí karty (config/oblasti.json)
     const mapa = await nactiOblastiMapu();
     rozradSmlouvy(client, record.onboarding.smlouvy, mapa);
     await Storage.saveClient(client, "onboarding");
+    clearDraft();   // úspěšně uloženo → rozpracované už není třeba
     out.textContent = "Uloženo do systému ✓ — poradce údaje uvidí v přehledu klientů.";
   } catch (err) {
     out.textContent = err.message;
@@ -396,12 +581,27 @@ async function saveToStorage() {
 // ---------------------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", async () => {
   await nactiAppConfig();
-  // Obnovit případné přihlášení dřív, než se rozhodne o způsobu uložení.
   if (typeof Auth !== "undefined") Auth.obnov();
-  try { vytvorStorage(APP); } catch { /* formulář jde vyplnit i bez úložiště — na konci se stáhne soubor */ }
+  try { vytvorStorage(APP); } catch { /* formulář jde vyplnit i bez úložiště */ }
 
-  const resumed = loadDraft();
-  if (resumed) $("#draft-note").hidden = false;
+  // Režim poradce: předvyplnit z karty (upravit existující dotazník)
+  if (KLIENT_ID && Storage.umiZapisovat && Storage.umiZapisovat()) {
+    try {
+      const c = await Storage.loadClient(KLIENT_ID);
+      if (c.onboarding) { puvodniOnboarding = c.onboarding; naplnZOnboardingu(c.onboarding); }
+      const jm = `${c.jmeno || ""} ${c.prijmeni || ""}`.trim();
+      if (jm) $("#klient-jmeno").textContent = `Klient: ${jm}`;
+    } catch { /* bez předvyplnění */ }
+  }
+
+  // Rozpracované z minula: nabídnout, nevnucovat
+  const draft = readDraft();
+  if (draft) {
+    $("#draft-note").hidden = false;
+    $("#draft-note-text").textContent = `Máte rozpracovaný formulář z ${fmtDatum(draft.saved_at)}.`;
+    $("#draft-pokracovat").addEventListener("click", () => { applyDraft(draft); $("#draft-note").hidden = true; renderStep(); });
+    $("#draft-znovu").addEventListener("click", () => { clearDraft(); $("#draft-note").hidden = true; });
+  }
   renderStep();
 
   $("#btn-next").addEventListener("click", () => {
@@ -422,6 +622,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     collectStep();
     saveDraft();
     $("#draft-status").textContent = "Rozpracováno uloženo — můžete se vrátit později (stejný prohlížeč).";
+  });
+  $("#btn-clear-draft").addEventListener("click", () => {
+    clearDraft();
+    data = prazdnaData();
+    if (puvodniOnboarding) naplnZOnboardingu(puvodniOnboarding);
+    step = 0;
+    renderStep();
+    $("#draft-status").textContent = "Rozpracované vymazáno.";
   });
   $("#btn-save-storage").addEventListener("click", saveToStorage);
   $("#btn-download").addEventListener("click", () => {

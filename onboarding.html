@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bohatněte s rozumem — Vstupní dotazník</title>
-  <link rel="stylesheet" href="css/style.css?v=202609222056">
+  <link rel="stylesheet" href="css/style.css?v=202609222317">
 </head>
 <body>
 
@@ -21,8 +21,13 @@
     </div>
 
     <div class="onb-testdata-note" id="draft-note" hidden>
-      Pokračujete v rozpracovaném vyplnění — údaje z minula jsou předvyplněné.
+      <span id="draft-note-text"></span>
+      <span style="margin-left:10px">
+        <button type="button" class="onb-add-btn" id="draft-pokracovat">Pokračovat</button>
+        <button type="button" class="onb-add-btn" id="draft-znovu">Začít znovu</button>
+      </span>
     </div>
+    <div class="onb-progress-label" id="klient-jmeno" style="text-align:left;font-weight:600"></div>
 
     <div class="onb-progress" id="progress"></div>
     <div class="onb-progress-label" id="progress-label"></div>
@@ -32,6 +37,7 @@
       <div class="onb-nav">
         <button type="button" class="prev" id="btn-prev">← Zpět</button>
         <div>
+          <button type="button" class="prev" id="btn-clear-draft" title="Zahodí rozpracované a začne od začátku">Vymazat rozpracované</button>
           <button type="button" class="prev" id="btn-save-draft">Uložit a dokončit později</button>
           <button type="button" class="next" id="btn-next">Pokračovat →</button>
         </div>
@@ -49,13 +55,13 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=202609222056"></script>
-  <script src="js/app-config.js?v=202609222056"></script>
-  <script src="js/auth.js?v=202609222056"></script>
-  <script src="js/storage.demo.js?v=202609222056"></script>
-  <script src="js/storage.supabase.js?v=202609222056"></script>
-  <script src="js/storage.js?v=202609222056"></script>
-  <script src="js/mapper.js?v=202609222056"></script>
-  <script src="js/onboarding.js?v=202609222056"></script>
+  <script src="js/config.js?v=202609222317"></script>
+  <script src="js/app-config.js?v=202609222317"></script>
+  <script src="js/auth.js?v=202609222317"></script>
+  <script src="js/storage.demo.js?v=202609222317"></script>
+  <script src="js/storage.supabase.js?v=202609222317"></script>
+  <script src="js/storage.js?v=202609222317"></script>
+  <script src="js/mapper.js?v=202609222317"></script>
+  <script src="js/onboarding.js?v=202609222317"></script>
 </body>
 </html>

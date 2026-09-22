@@ -341,9 +341,9 @@ function renderDetail(c) {
           </div>
         </div>
         <div>
-          ${c.onboarding ? "" : `<a class="mode-toggle" id="formular-otevrit" target="_blank" rel="noopener"
+          <a class="mode-toggle" id="formular-otevrit" target="_blank" rel="noopener"
              href="onboarding.html?klient=${esc(c.id)}"
-             title="Otevře vstupní dotazník tohoto klienta — vyplníte ho vy na schůzce. Zmizí, jakmile je dotazník vyplněný; pak se upravuje v kartě.">Vyplnit vstupní formulář</a>`}
+             title="${c.onboarding ? "Otevře formulář předvyplněný údaji z karty — upravíte a uložíte." : "Otevře vstupní dotazník tohoto klienta — vyplníte ho vy na schůzce."}">${c.onboarding ? "Upravit ve formuláři" : "Vyplnit vstupní formulář"}</a>
           <button class="mode-toggle" id="formular-odkaz"
              title="Zkopíruje odkaz na dotazník, který pošlete klientovi">Kopírovat odkaz pro klienta</button>
           <button class="mode-toggle" id="copy4fin-btn" title="Zobrazí všechna pole v pořadí formuláře 4fin, aby se daly rychle přenést do CRM">Kopírovat do 4fin</button>
@@ -673,12 +673,17 @@ function renderClientData(c) {
   const onb = c.onboarding;
   if (!onb) return `<p class="copy4fin-empty">Klient zatím formulář nevyplnil. Otevřete ho tlačítkem „Vstupní formulář" nahoře, nebo klientovi pošlete odkaz („Kopírovat odkaz pro klienta").</p>`;
 
+  const adresa = (a) => {
+    if (!a) return "";
+    if (typeof a === "string") return a;   // starší záznamy
+    return [[a.ulice, a.cislo].filter(Boolean).join(" "), a.mesto, a.psc].filter(Boolean).join(", ");
+  };
   const kontakt = `
     <div class="field-grid">
       ${field("Telefon", onb.telefon)}
       ${field("E-mail", onb.email)}
-      ${field("Trvalá adresa", onb.adresa_trvala)}
-      ${field("Korespondenční adresa", onb.adresa_korespondencni)}
+      ${field("Trvalá adresa", adresa(onb.adresa_trvala))}
+      ${field("Korespondenční adresa", onb.adresa_korespondencni_shodna !== false && !onb.adresa_korespondencni ? "shodná s trvalou" : adresa(onb.adresa_korespondencni))}
       ${field("Rodinný stav", onb.rodinny_stav)}
       ${field("Povolání", onb.povolani)}
       ${field("Zdroj příjmů", onb.zdroj_prijmu)}
@@ -693,7 +698,7 @@ function renderClientData(c) {
     : "";
 
   const smlouvyBody = (onb.smlouvy || []).map((s) =>
-    `<tr><td>${esc(s.typ)}</td><td>${esc(s.instituce)}</td><td style="text-align:right">${esc(s.platba)} Kč</td><td>${esc(s.poznamka)}</td></tr>`).join("");
+    `<tr><td>${esc(s.typ)}</td><td>${esc(s.instituce)}</td><td style="text-align:right">${esc(s.mesicni_platba ?? s.platba ?? "")} Kč</td><td>${esc(s.poznamka)}</td></tr>`).join("");
   const smlouvy = smlouvyBody
     ? `<h3 style="border:none;margin-bottom:4px">Aktivní smlouvy</h3>
        <table class="mini-table"><thead><tr><th>Produkt</th><th>Instituce</th><th style="text-align:right">Platba</th><th>Poznámka</th></tr></thead><tbody>${smlouvyBody}</tbody></table>`
