@@ -78,6 +78,7 @@ class SupabaseStorage {
       "komentare(*,autor_uzivatel:uzivatele(jmeno))",
       "schuzky(*,kdo_uzivatel:uzivatele(jmeno))",
       "cile(*)",
+      "dokumenty(*,nahral_uzivatel:uzivatele(jmeno))",
     ].join(",");
     const radky = await this._rest(`klienti?id=eq.${encodeURIComponent(id)}&select=${encodeURIComponent(vyber)}`);
     if (!radky.length) throw new StorageError("nenalezen", `Klient ${id} nebyl nalezen.`);
@@ -140,6 +141,13 @@ function zTabulek(r) {
       souhrn: s.souhrn, odkaz: s.odkaz, zdroj: s.zdroj, plaud_file_id: s.plaud_file_id,
     })),
     cile: (r.cile || []).map((c) => ({ cil: c.cil, castka: c.castka, termin: c.termin, stav: c.stav })),
+    dokumenty: (r.dokumenty || []).filter((d) => !d.smazano).map((d) => ({
+      id: d.id, checklist_klic: d.checklist_klic || "", nazev: d.nazev, typ: d.typ, stav: d.stav,
+      storage_path: d.storage_path || "", mime: d.mime || "", velikost: d.velikost,
+      nahral_klient: d.nahral_klient === true,
+      nahral_jmeno: d.nahral_klient ? "klient" : ((d.nahral_uzivatel && d.nahral_uzivatel.jmeno) || ""),
+      kdy: d.kdy, zobrazeno_kdy: d.zobrazeno_kdy,
+    })),
     upraveno: r.upraveno, upravil: r.upravil,
     // Excelová pole zůstávají v poradce jsonb, UI je čte odtud
     ...vybaleneExcelove(r.poradce || {}),
@@ -189,6 +197,12 @@ function doTabulek(c, kdo) {
       souhrn: s.souhrn, odkaz: s.odkaz, zdroj: s.zdroj, plaud_file_id: s.plaud_file_id,
     })),
     cile: c.cile || [],
+    // dokumenty jen když je volající poslal — server je neruší, jen doplní/aktualizuje
+    ...(Array.isArray(c.dokumenty) ? { dokumenty: c.dokumenty.map((d) => ({
+      id: d.id || "", nazev: d.nazev || "", typ: d.typ || "", stav: d.stav || "",
+      checklist_klic: d.checklist_klic || "",
+      smazano: d.smazano === true ? "true" : "", zobrazeno: d.zobrazeno === true ? "true" : "",
+    })) } : {}),
     upravil: kdo || "",
     upraveno: c.upraveno || null,   // zámek: server porovná s uloženou hodnotou
   };

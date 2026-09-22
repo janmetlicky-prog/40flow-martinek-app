@@ -61,7 +61,7 @@ const STEPS = [
   {
     id: "dokumenty",
     title: "Dokumenty",
-    hint: `Doklad totožnosti, výpisy, stávající smlouvy. Max ${MAX_FILE_MB} MB na soubor.`,
+    hint: "Které podklady už máme a které ještě potřebujeme. Nahrávání souborů přijde v dalším kroku.",
     type: "dokumenty",
   },
 ];
@@ -72,6 +72,8 @@ let step = 0;
 let data = prazdnaData();
 let record = null;
 let puvodniOnboarding = null;   // režim poradce: co bylo v kartě před úpravou
+let DOK_CFG = { polozky: [], stavy: {} };   // config/dokumenty.json
+let klientDokumenty = [];       // řádky z karty (s id) — sloučí se s checklistem
 
 function prazdnaData() {
   return {
@@ -102,8 +104,7 @@ const VALIDATORS = {
 // ---------------------------------------------------------------------------
 function saveDraft() {
   try {
-    const { dokumenty, ...rest } = data;   // base64 souborů do localStorage nepatří
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ step, data: rest, saved_at: new Date().toISOString() }));
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ step, data, saved_at: new Date().toISOString() }));
   } catch { /* plný storage — draft je jen pohodlí */ }
 }
 
@@ -115,7 +116,7 @@ function readDraft() {
 }
 
 function applyDraft(draft) {
-  data = { ...prazdnaData(), ...draft.data, dokumenty: [] };
+  data = { ...prazdnaData(), ...draft.data };
   step = Math.min(draft.step ?? 0, STEPS.length - 1);
 }
 
@@ -258,19 +259,35 @@ function smlouvyHtml() {
   return `${rows}<button type="button" class="onb-add-btn" id="add-smlouva">+ Přidat další smlouvu</button>`;
 }
 
+/** Checklist: položky z configu + vlastní. Stav „čeká na kontrolu" nastavuje jen upload klienta. */
 function dokumentyHtml() {
-  const list = data.dokumenty.map((d, i) => `
-    <div class="onb-doc-row" data-idx="${i}">
-      <span>📄 ${esc(d.nazev)} <span class="doc-size">(${(d.velikost / 1024).toFixed(0)} kB)</span></span>
-      <button type="button" class="item-del doc-del">×</button>
-    </div>`).join("");
-  return `
-    <div class="onb-field full">
-      <label>Nahrát soubory (doklad totožnosti, výpisy, smlouvy)</label>
-      <input type="file" id="doc-input" multiple accept=".pdf,.jpg,.jpeg,.png,.heic">
-      <div class="err" id="doc-err"></div>
-    </div>
-    <div id="doc-list">${list}</div>`;
+  const stavy = Object.entries(DOK_CFG.stavy || {}).filter(([k]) => k !== "ceka_na_kontrolu");
+  const rows = data.dokumenty.map((d, i) => {
+    if (d.smazano) return "";
+    const opts = stavy.map(([k, v]) => `<option value="${k}" ${d.stav === k ? "selected" : ""}>${esc(v)}</option>`).join("");
+    const zamek = d.stav === "ceka_na_kontrolu" ? `<option value="ceka_na_kontrolu" selected>${esc(DOK_CFG.stavy.ceka_na_kontrolu)}</option>` : "";
+    return `<div class="onb-dok-row" data-idx="${i}">
+      <span>${esc(d.nazev)}${d.checklist_klic ? "" : `<span class="dok-vlastni">vlastní</span>`}</span>
+      <span><select class="dok-stav">${zamek}${opts}</select>
+        ${d.checklist_klic ? "" : `<button type="button" class="item-del dok-del" title="Odebrat">×</button>`}</span>
+    </div>`;
+  }).join("");
+  return `${rows}
+    <div class="dok-add-row" style="margin-top:12px">
+      <input id="dok-novy" placeholder="další dokument, např. smlouva o dílo">
+      <button type="button" id="dok-add" class="onb-add-btn">+ Přidat položku</button>
+    </div>`;
+}
+
+/** Sloučí položky z configu s tím, co má klient uložené (podle klíče). */
+function sestavDokumenty(ulozene) {
+  const out = [];
+  for (const p of DOK_CFG.polozky || []) {
+    const u = (ulozene || []).find((d) => d.checklist_klic === p.klic);
+    out.push(u ? { ...u } : { checklist_klic: p.klic, nazev: p.nazev, stav: "nedodano" });
+  }
+  for (const u of ulozene || []) if (!u.checklist_klic) out.push({ ...u });
+  return out;
 }
 
 function renderStep() {
@@ -334,25 +351,17 @@ function bindStepEvents(s) {
     }));
   }
   if (s.type === "dokumenty") {
-    $("#doc-input").addEventListener("change", async (e) => {
-      $("#doc-err").textContent = "";
-      for (const file of e.target.files) {
-        if (file.size > MAX_FILE_MB * 1024 * 1024) {
-          $("#doc-err").textContent = `${file.name}: soubor je větší než ${MAX_FILE_MB} MB.`;
-          continue;
-        }
-        const b64 = await new Promise((res) => {
-          const r = new FileReader();
-          r.onload = () => res(r.result);
-          r.readAsDataURL(file);
-        });
-        data.dokumenty.push({ nazev: file.name, typ: file.type, velikost: file.size, data: b64 });
-      }
-      e.target.value = "";
+    $("#dok-add").addEventListener("click", () => {
+      const nazev = $("#dok-novy").value.trim();
+      if (!nazev) return;
+      collectStep();
+      data.dokumenty.push({ checklist_klic: "", nazev, stav: "nedodano" });
       renderStep();
     });
-    document.querySelectorAll(".doc-del").forEach((btn) => btn.addEventListener("click", () => {
-      data.dokumenty.splice(Number(btn.closest(".onb-doc-row").dataset.idx), 1);
+    document.querySelectorAll(".dok-del").forEach((btn) => btn.addEventListener("click", () => {
+      collectStep();
+      const i = Number(btn.closest(".onb-dok-row").dataset.idx);
+      if (data.dokumenty[i].id) data.dokumenty[i].smazano = true; else data.dokumenty.splice(i, 1);
       renderStep();
     }));
   }
@@ -452,7 +461,13 @@ function collectStep() {
       .filter((sm) => sm.typ || sm.instituce || sm.mesicni_platba);
     return true;
   }
-  if (s.type === "dokumenty") return true;
+  if (s.type === "dokumenty") {
+    document.querySelectorAll(".onb-dok-row").forEach((row) => {
+      const d = data.dokumenty[Number(row.dataset.idx)];
+      if (d) d.stav = row.querySelector(".dok-stav").value;
+    });
+    return true;
+  }
 
   for (const f of s.fields || []) {
     const wrap = document.querySelector(`[data-key="${f.key}"]`);
@@ -502,7 +517,6 @@ function buildOnboarding() {
     zdroj_prijmu: data.zdroj_prijmu || "",
     bilance: data.bilance,
     smlouvy: data.smlouvy,
-    dokumenty: data.dokumenty,
   };
 }
 
@@ -535,7 +549,7 @@ function naplnZOnboardingu(onb) {
     adresa_korespondencni: adr(onb.adresa_korespondencni),
     bilance: { prijmy: [], vydaje: [], zavazky: [], ...(onb.bilance || {}) },
     smlouvy: (onb.smlouvy || []).map((s) => ({ ...s, mesicni_platba: s.mesicni_platba ?? s.platba ?? "" })),
-    dokumenty: [],
+    dokumenty: sestavDokumenty(klientDokumenty),
   };
 }
 
@@ -550,6 +564,7 @@ async function saveToStorage() {
     if (client) {
       client.onboarding = record.onboarding;
       client.onboarding_submitted_at = record.onboarding_submitted_at;
+      client.dokumenty = data.dokumenty;   // checklist (server doplní/aktualizuje, nemaže)
     } else {
       const oblasti = {};
       for (const p of CONFIG.productFields) oblasti[p.key] = { stav: "", faze: "", faze_historie: [], poznamka: "" };
@@ -564,6 +579,7 @@ async function saveToStorage() {
         onboarding: record.onboarding,
         onboarding_submitted_at: record.onboarding_submitted_at,
         poradce: {}, komentare: [], schuzky: [], ida_url: "", cile: [],
+        dokumenty: data.dokumenty,
       };
     }
     const mapa = await nactiOblastiMapu();
@@ -581,6 +597,8 @@ async function saveToStorage() {
 // ---------------------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", async () => {
   await nactiAppConfig();
+  try { DOK_CFG = await (await fetch("config/dokumenty.json")).json(); } catch { /* bez checklistu */ }
+  data.dokumenty = sestavDokumenty([]);
   if (typeof Auth !== "undefined") Auth.obnov();
   try { vytvorStorage(APP); } catch { /* formulář jde vyplnit i bez úložiště */ }
 
@@ -588,7 +606,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (KLIENT_ID && Storage.umiZapisovat && Storage.umiZapisovat()) {
     try {
       const c = await Storage.loadClient(KLIENT_ID);
+      klientDokumenty = c.dokumenty || [];
       if (c.onboarding) { puvodniOnboarding = c.onboarding; naplnZOnboardingu(c.onboarding); }
+      else data.dokumenty = sestavDokumenty(klientDokumenty);
       const jm = `${c.jmeno || ""} ${c.prijmeni || ""}`.trim();
       if (jm) $("#klient-jmeno").textContent = `Klient: ${jm}`;
     } catch { /* bez předvyplnění */ }

@@ -1,0 +1,16 @@
+{
+  "_komentar": "Checklist dokumentů, které poradce od klienta potřebuje. Zástupné hodnoty — Petr dodá finální seznam. Klíč se nemění (váže se na uložené záznamy), popisek ano.",
+  "polozky": [
+    { "klic": "obcansky_prukaz",   "nazev": "Občanský průkaz" },
+    { "klic": "vypis_z_uctu",      "nazev": "Výpis z účtu" },
+    { "klic": "pojistne_smlouvy",  "nazev": "Pojistné smlouvy" },
+    { "klic": "vypis_z_katastru",  "nazev": "Výpis z katastru" },
+    { "klic": "potvrzeni_o_prijmu","nazev": "Potvrzení o příjmu" }
+  ],
+  "stavy": {
+    "nedodano":         "Nedodáno",
+    "ceka_na_kontrolu": "Nahráno, čeká na kontrolu",
+    "dodano":           "Dodáno",
+    "nepotrebujeme":    "Nepotřebujeme"
+  }
+}

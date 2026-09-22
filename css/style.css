@@ -297,3 +297,12 @@ a.mode-toggle { text-decoration: none; display: inline-block; line-height: 1.2; 
 .onb-bilance-rozdil strong { font-size: 18px; font-variant-numeric: tabular-nums; }
 .onb-bilance-rozdil strong.zaporny { color: #b02020; }
 @media (max-width: 520px) { .onb-adresa { grid-template-columns: 1fr; } }
+
+/* --- Dokumenty v kartě ----------------------------------------------------- */
+.dok-table select { padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; }
+.dok-add-row { display: flex; gap: 8px; margin-top: 8px; }
+.dok-add-row input { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
+/* --- Checklist dokumentů ve formuláři -------------------------------------- */
+.onb-dok-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--gray-100); }
+.onb-dok-row select { padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
+.onb-dok-row .dok-vlastni { font-size: 11px; color: var(--text-muted); margin-left: 6px; }

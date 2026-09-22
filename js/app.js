@@ -125,15 +125,18 @@ function askToken() {
 // ---------------------------------------------------------------------------
 let FAZE = [];
 let SCHUZKY_TYPY = [];
+let DOKUMENTY_CFG = { polozky: [], stavy: {} };
 
 async function loadConfigs() {
   try {
-    const [f, s] = await Promise.all([
+    const [f, s, d] = await Promise.all([
       fetch("config/faze.json").then((r) => r.json()),
       fetch("config/schuzky.json").then((r) => r.json()),
+      fetch("config/dokumenty.json").then((r) => r.json()),
     ]);
     FAZE = f.faze || [];
     SCHUZKY_TYPY = s.typy || [];
+    DOKUMENTY_CFG = d;
   } catch {
     showError(new Error("Nepodařilo se načíst konfiguraci (config/*.json)."));
   }
@@ -411,6 +414,9 @@ function renderDetail(c) {
         <div class="onb-field full"><button id="schuzka-add" class="mode-toggle">Přidat schůzku</button></div>
       </div>
 
+      <h3>Dokumenty</h3>
+      ${renderDokumenty(c)}
+
       <h3>IDA / investiční dotazník</h3>
       <div class="onb-field"><label>Odkaz (URL)</label>
         <input type="url" id="ida-url" value="${esc(c.ida_url || "")}" placeholder="https://…"></div>
@@ -625,6 +631,32 @@ function renderDetail(c) {
     });
   });
 
+  // Dokumenty — stav mění jen tým; vlastní položky lze přidat
+  document.querySelectorAll(".dok-stav").forEach((sel) => {
+    sel.addEventListener("change", () => {
+      const d = c.dokumenty[Number(sel.dataset.idx)];
+      d.stav = sel.value;
+      markDirty(c.id);
+      renderDetail(c);
+    });
+  });
+  document.querySelectorAll(".dok-del").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const d = c.dokumenty[Number(btn.dataset.idx)];
+      if (d.id) { d.smazano = true; } else { c.dokumenty.splice(Number(btn.dataset.idx), 1); }
+      markDirty(c.id);
+      renderDetail(c);
+    });
+  });
+  $("#dok-add")?.addEventListener("click", () => {
+    const nazev = $("#dok-novy").value.trim();
+    if (!nazev) return;
+    if (!Array.isArray(c.dokumenty)) c.dokumenty = [];
+    c.dokumenty.push({ checklist_klic: "", nazev, stav: "nedodano" });
+    markDirty(c.id);
+    renderDetail(c);
+  });
+
   // IDA + cíle
   $("#ida-url").addEventListener("change", () => {
     c.ida_url = $("#ida-url").value.trim();
@@ -709,6 +741,47 @@ function renderClientData(c) {
   const dokumenty = docs ? `<h3 style="border:none;margin-bottom:4px">Dokumenty</h3><div style="font-size:13px">${docs}</div>` : "";
 
   return kontakt + bilance + smlouvy + dokumenty;
+}
+
+/**
+ * Checklist dokumentů: položky z config/dokumenty.json sloučené s tím, co má
+ * klient uložené (podle checklist_klic), plus vlastní položky. Stav přepíná
+ * jen tým. Řádek se souborem od klienta má štítek „čeká na kontrolu".
+ */
+function renderDokumenty(c) {
+  if (!Array.isArray(c.dokumenty)) c.dokumenty = [];
+  // doplnit chybějící položky z configu (bez id — uloží se až s kartou)
+  for (const p of DOKUMENTY_CFG.polozky || []) {
+    if (!c.dokumenty.some((d) => d.checklist_klic === p.klic && !d.smazano)) {
+      c.dokumenty.push({ checklist_klic: p.klic, nazev: p.nazev, stav: "nedodano" });
+    }
+  }
+  const stavy = DOKUMENTY_CFG.stavy || {};
+  const rows = c.dokumenty.map((d, i) => {
+    if (d.smazano) return "";
+    const opts = Object.entries(stavy).map(([k, v]) =>
+      `<option value="${k}" ${d.stav === k ? "selected" : ""} ${k === "ceka_na_kontrolu" && d.stav !== k ? "disabled" : ""}>${esc(v)}</option>`).join("");
+    const kdo = d.nahral_klient ? `<span class="src-badge client">klient</span>` : esc(d.nahral_jmeno || "");
+    const nove = d.nahral_klient && !d.zobrazeno_kdy ? ` <span class="badge nove">nové</span>` : "";
+    const soubor = d.storage_path ? `<button class="onb-add-btn dok-otevrit" data-idx="${i}">Otevřít</button>` : `<span class="muted-small">bez souboru</span>`;
+    return `<tr>
+      <td>${esc(d.nazev)}${nove}</td>
+      <td><select class="dok-stav" data-idx="${i}">${opts}</select></td>
+      <td class="muted-small">${kdo}${d.kdy ? ` · ${fmtCas(d.kdy)}` : ""}</td>
+      <td>${soubor}</td>
+      <td><button class="item-del dok-del" data-idx="${i}" title="Odebrat položku">×</button></td>
+    </tr>`;
+  }).join("");
+  return `
+    <table class="mini-table dok-table">
+      <thead><tr><th>Dokument</th><th>Stav</th><th>Nahrál</th><th>Soubor</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="dok-add-row">
+      <input id="dok-novy" placeholder="vlastní položka, např. smlouva o dílo">
+      <button id="dok-add" class="onb-add-btn">+ Přidat položku</button>
+    </div>
+    <p class="muted-small">Nahrávání souborů přijde v dalším kroku; teď se eviduje jen stav.</p>`;
 }
 
 function renderAdvisorFields(c) {

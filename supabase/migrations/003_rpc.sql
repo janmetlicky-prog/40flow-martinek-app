@@ -139,6 +139,27 @@ begin
             coalesce(v_zaznam->>'termin', ''), coalesce(nullif(v_zaznam->>'stav', ''), 'aktivní'));
   end loop;
 
+  -- Dokumenty se NEPŘEBUDOVÁVAJÍ (nesou cesty k nahraným souborům).
+  -- Položka s id → aktualizace stavu/názvu; bez id → nová položka checklistu.
+  -- Mazání jen měkce přes `smazano`. Soubor samotný zapisují upload cesty.
+  for v_zaznam in select * from jsonb_array_elements(coalesce(p->'dokumenty', '[]'::jsonb))
+  loop
+    if nullif(v_zaznam->>'id', '') is not null then
+      update dokumenty set
+        nazev          = coalesce(v_zaznam->>'nazev', nazev),
+        stav           = coalesce(nullif(v_zaznam->>'stav', ''), stav),
+        checklist_klic = coalesce(v_zaznam->>'checklist_klic', checklist_klic),
+        smazano        = case when (v_zaznam->>'smazano') = 'true' then coalesce(smazano, now()) else smazano end,
+        zobrazeno_kdy  = case when (v_zaznam->>'zobrazeno') = 'true' then coalesce(zobrazeno_kdy, now()) else zobrazeno_kdy end
+      where id = (v_zaznam->>'id')::uuid and klient_id = v_id;
+    else
+      insert into dokumenty (klient_id, nazev, typ, stav, checklist_klic, nahral)
+      values (v_id, coalesce(v_zaznam->>'nazev', ''), coalesce(v_zaznam->>'typ', ''),
+              coalesce(nullif(v_zaznam->>'stav', ''), 'nedodano'),
+              coalesce(v_zaznam->>'checklist_klic', ''), auth.uid());
+    end if;
+  end loop;
+
   return v_nove;
 end;
 $$;
