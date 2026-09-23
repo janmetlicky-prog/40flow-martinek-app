@@ -74,6 +74,28 @@ export async function overToken(token: unknown): Promise<Pristup | Response> {
   return { id: p.id, klient_id: p.klient_id, platnost_do: p.platnost_do };
 }
 
+/**
+ * Kanonický tvar pro porovnání: seřazené klíče, prázdné hodnoty sjednocené.
+ * jsonb v Postgresu klíče přeskládá, takže porovnání JSON.stringify(a) === JSON.stringify(b)
+ * hlásilo změnu i tam, kde žádná nebyla.
+ */
+export function kanon(v: unknown): string {
+  const norm = (x: unknown): unknown => {
+    if (x === undefined || x === null || x === "") return null;
+    if (Array.isArray(x)) return x.map(norm);
+    if (typeof x === "object") {
+      const o: Record<string, unknown> = {};
+      for (const k of Object.keys(x as object).sort()) {
+        const n = norm((x as Record<string, unknown>)[k]);
+        if (n !== null) o[k] = n;
+      }
+      return Object.keys(o).length ? o : null;
+    }
+    return x;
+  };
+  return JSON.stringify(norm(v));
+}
+
 /** Z libovolného objektu vybere jen povolené klíče onboardingu. */
 export function jenPovolene(onb: Record<string, unknown> | null | undefined) {
   const out: Record<string, unknown> = {};

@@ -9,7 +9,7 @@
 //    se nemění → v kartě svítí „nové"
 //  - zápis přes save_klient jen s klíči onboarding (+ oblasti, když přibyla smlouva)
 
-import { admin, json, overToken, jenPovolene, ALLOWED_ONBOARDING, CORS } from "../_shared/klient.ts";
+import { admin, json, overToken, jenPovolene, kanon, ALLOWED_ONBOARDING, CORS } from "../_shared/klient.ts";
 
 const APP_URL = Deno.env.get("APP_URL") || "https://janmetlicky-prog.github.io/40flow-martinek-app";
 
@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
   const zmeny: { klient_id: string; pole: string; stara: unknown; nova: unknown; zdroj: string }[] = [];
   for (const kl of ALLOWED_ONBOARDING) {
     const a = stare[kl], b = nove[kl];
-    if (JSON.stringify(a ?? null) !== JSON.stringify(b ?? null) && !prazdne(a)) {
+    if (kanon(a) !== kanon(b) && !prazdne(a)) {
       zmeny.push({ klient_id: k.id, pole: kl, stara: a ?? null, nova: b ?? null, zdroj: "klient" });
     }
   }
