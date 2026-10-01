@@ -104,7 +104,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 24px 28px; }
   .detail-back.mode-toggle { width: 100%; text-align: center; padding: 10px 16px; }
 }
 .dialog-pozadi { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
-.dialog-pozadi[hidden] { display: none; }
+[hidden] { display: none !important; }
 .dialog { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px 24px; max-width: 420px; width: 100%; }
 .dialog h3 { font-size: 16px; margin: 0 0 6px; }
 .dialog p { color: var(--text-muted); font-size: 13px; margin: 0 0 14px; }
