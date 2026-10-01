@@ -1,0 +1,8 @@
+{
+  "name": "40flow-martinek-app",
+  "private": true,
+  "scripts": {
+    "deploy": "rm -rf dist && mkdir -p dist && cp index.html onboarding.html _headers dist/ && cp -r js css config demo dist/ && set -a && . ./.env && set +a && npx wrangler@latest pages deploy dist --project-name=bohatnete-klienti --branch=main --commit-dirty=true",
+    "test": "node tests/run.mjs"
+  }
+}

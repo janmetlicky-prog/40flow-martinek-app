@@ -10,9 +10,11 @@
 "use strict";
 
 class SupabaseStorage {
-  constructor(cfg) {
+  constructor(cfg, klientUrl) {
     this.url = cfg.url;
     this.anon = cfg.anon_key;
+    // Kam vedou odkazy pro klienty (config/app.json → klient_url). Bez nastavení: stejná adresa jako aplikace.
+    this.klientUrl = klientUrl || new URL("onboarding", location.href).href;
   }
 
   // Přihlašování řeší Auth (magic link) — token od uživatele se nezadává.
@@ -125,7 +127,7 @@ class SupabaseStorage {
       method: "POST",
       body: JSON.stringify({ p_klient_id: klientId, p_token_hash: token_hash, p_heslo: heslo || null }),
     });
-    const url = new URL(`onboarding.html?klient=${encodeURIComponent(klientId)}&k=${token}`, location.href).href;
+    const url = `${this.klientUrl}?klient=${encodeURIComponent(klientId)}&k=${token}`;
     return { url, platnost_do: new Date(Date.now() + 30 * 86400_000).toISOString(), chraneno: !!heslo };
   }
 

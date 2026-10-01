@@ -210,7 +210,7 @@ function vytvorStorage(app) {
       throw new StorageError("nenastaveno",
         "Chybí adresa databáze nebo veřejný klíč v config/app.json.");
     }
-    Storage = new SupabaseStorage(app.supabase);
+    Storage = new SupabaseStorage(app.supabase, app.klient_url || "");
   } else {
     Storage = new DemoStorage();
   }

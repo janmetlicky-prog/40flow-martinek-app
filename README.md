@@ -236,11 +236,50 @@ Přepínání produktových stavů v kartě klienta → tlačítko „Uložit do
 
 Před prvním použitím doplň v `js/config.js` → `github.owner` a `github.repo`.
 
-## Nasazení
+## Nasazení — Cloudflare Pages
 
-1. Vytvoř privátní GitHub repo, pushni obsah.
-2. Settings → Pages → deploy z `main` (u privátního repa vyžaduje GitHub Pro/Team, jinak hostuj přes jiný statický hosting s přístupem do privátního repa).
-3. Doplň `github.owner`/`repo` v config.js, změň hesla.
+**Adresa:** `https://bohatnete-klienti.pages.dev` (projekt `bohatnete-klienti`, účet Cloudflare Jana; bez vlastní domény). Repo je privátní. Starý hosting na GitHub Pages je vypnutý.
+
+**Jak deploy funguje.** Hosting je statický: nahrává se jen to, co prohlížeč potřebuje — `index.html`, `onboarding.html`, `_headers`, `js/`, `css/`, `config/`, `demo/`. Testy, migrace, edge funkce, `.env` ani README na hosting nejdou. Cloudflare Pages dělá „čisté URL": `onboarding.html` se přesměruje (308) na `/onboarding`, proto odkazy pro klienty míří rovnou na `/onboarding` (`config/app.json` → `klient_url`).
+
+Dvě cesty nasazení, stejný výsledek:
+
+1. **Automaticky** — GitHub Action `.github/workflows/deploy.yml`: každý push do `main` nahraje balík přes `wrangler pages deploy`. Potřebuje dva secrets v repu (Settings → Secrets and variables → Actions): `CLOUDFLARE_API_TOKEN` (právo *Cloudflare Pages: Edit*) a `CLOUDFLARE_ACCOUNT_ID`.
+2. **Ručně z počítače** — stejný příkaz, token z `.env`:
+   ```bash
+   npm run deploy
+   ```
+   (skládá `dist/` a volá `wrangler pages deploy`; `dist/` je v `.gitignore`).
+
+Každý deploy má vlastní náhledovou adresu `https://<hash>.bohatnete-klienti.pages.dev`; produkční je bez hashe. Rollback = Cloudflare → Workers & Pages → bohatnete-klienti → Deployments → „Rollback" u staršího nasazení.
+
+**`_headers`** nastavuje bezpečnostní hlavičky (nosniff, `X-Frame-Options: DENY`, Referrer-Policy) a `no-cache` na `config/`, aby se změna konfigurace projevila hned (skripty řeší `?v=` v HTML).
+
+**Co visí na adrese aplikace (při změně adresy projít):**
+
+| Kde | Co | Proč |
+|---|---|---|
+| `config/app.json` → `klient_url` | adresa klientského formuláře | odkazy pro klienty |
+| Supabase → Authentication → URL Configuration | Site URL + Redirect URLs (`https://…/**`) | přihlašovací odkaz e-mailem |
+| Supabase → Edge Functions → Secrets → `APP_URL` | adresa aplikace | `klient_ulozit` si z ní čte `config/oblasti.json` |
+| `supabase/functions/_shared/klient.ts` → `CORS` | povolený origin | zatím `*`, zúžit před ostrým provozem |
+| developer.mapy.cz → klíč | povolené domény (referrer) | našeptávač adres |
+
+### Přechod na vlastní doménu
+
+1. Doménu přidat do Cloudflare (Add a domain, plán Free) a u registrátora přepnout nameservery.
+2. Workers & Pages → bohatnete-klienti → Custom domains → přidat `app.<doména>` (tým) a `klient.<doména>` (klientský formulář). DNS záznamy Cloudflare založí sám.
+3. Projít tabulku výše: `klient_url` → `https://klient.<doména>/onboarding`, Supabase URL, `APP_URL`, CORS, Mapy.cz.
+4. `pages.dev` adresa dál funguje — nechat jako zálohu, nebo v Pages vypnout.
+
+### Cloudflare Access (až bude)
+
+Zero Trust (plán Free do 50 uživatelů) chce při aktivaci platební kartu, proto zatím není. Doplní se před předáním na Petrův účet. Plán:
+
+- **Aplikace „tým":** hostname aplikace, politika *Allow* pro e-maily týmu, přihlášení One-time PIN (kód e-mailem, bez SMTP). Kdo není v seznamu, neuvidí ani přihlašovací stránku. Supabase login zůstává jako druhá vrstva (řídí práva v datech).
+- **Klientský formulář mimo Access:** s vlastní doménou je to triviální — `klient.<doména>` do Access nepatří. Na `pages.dev` by to byla druhá aplikace s politikou *Bypass* pro `/onboarding`, `/js/*`, `/css/*`, `/config/*` (Access bere nejkonkrétnější shodu).
+- **Náhledová nasazení** `*.bohatnete-klienti.pages.dev` za Access celá (Pages → Settings → Access policy).
+- Přidat člena týmu = e-mail do politiky + řádek v `uzivatele`.
 
 ## Výměna brandu
 

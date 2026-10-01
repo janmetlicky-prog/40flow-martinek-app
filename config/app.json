@@ -7,6 +7,9 @@
   "_testovaci_rezim": "true = na všech obrazovkách svítí varovný pruh, že jde o testovací prostředí. Před ostrým provozem přepnout na false.",
   "testovaci_rezim": true,
 
+  "_klient_url": "Adresa klientského formuláře, na kterou se generují odkazy pro klienty. Prázdné = stejná adresa, odkud běží aplikace. Při přechodu na vlastní doménu se mění tady.",
+  "klient_url": "https://bohatnete-klienti.pages.dev/onboarding",
+
   "_mapy": "Našeptávač adres (Mapy.cz). Klíč z developer.mapy.cz, omezený na doménu aplikace. Prázdný = našeptávač se nezobrazí, adresa se píše ručně.",
   "mapy": { "api_key": "srAJ1yHvxHxY872UlUHUkwiRkRfQyCe7eq9RCHZv6UE" },
 

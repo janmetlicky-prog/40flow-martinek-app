@@ -1,0 +1,10 @@
+# Cloudflare Pages — HTTP hlavičky (platí pro všechny cesty)
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Konfigurace a skripty: krátká cache, verze řeší ?v= v HTML
+/config/*
+  Cache-Control: no-cache
