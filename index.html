@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>40Flow — Přehled klientů</title>
-  <link rel="stylesheet" href="css/style.css?v=202610010949">
+  <link rel="stylesheet" href="css/style.css?v=202610011015">
 </head>
 <body>
 
@@ -127,6 +127,18 @@
       </details>
     </main>
 
+    <div id="dialog-neulozene" class="dialog-pozadi" hidden>
+      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-neulozene-h">
+        <h3 id="dialog-neulozene-h">Máte neuložené změny</h3>
+        <p>Co s nimi?</p>
+        <div class="dialog-akce">
+          <button class="mode-toggle active" data-volba="ulozit">Uložit a odejít</button>
+          <button class="mode-toggle" data-volba="zahodit">Zahodit změny</button>
+          <button class="mode-toggle" data-volba="zustat">Zůstat v kartě</button>
+        </div>
+      </div>
+    </div>
+
     <div id="save-bar" class="save-bar">
       <span class="msg">Neuložené změny: <strong id="dirty-count">0</strong></span>
       <button id="save-github">Uložit</button>
@@ -135,15 +147,15 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=202610010949"></script>
-  <script src="js/app-config.js?v=202610010949"></script>
-  <script src="js/auth.js?v=202610010949"></script>
-  <script src="js/storage.demo.js?v=202610010949"></script>
-  <script src="js/storage.supabase.js?v=202610010949"></script>
-  <script src="js/storage.js?v=202610010949"></script>
-  <script src="js/soubor.js?v=202610010949"></script>
-  <script src="js/export_pdf.js?v=202610010949"></script>
-  <script src="js/mapper.js?v=202610010949"></script>
-  <script src="js/app.js?v=202610010949"></script>
+  <script src="js/config.js?v=202610011015"></script>
+  <script src="js/app-config.js?v=202610011015"></script>
+  <script src="js/auth.js?v=202610011015"></script>
+  <script src="js/storage.demo.js?v=202610011015"></script>
+  <script src="js/storage.supabase.js?v=202610011015"></script>
+  <script src="js/storage.js?v=202610011015"></script>
+  <script src="js/soubor.js?v=202610011015"></script>
+  <script src="js/export_pdf.js?v=202610011015"></script>
+  <script src="js/mapper.js?v=202610011015"></script>
+  <script src="js/app.js?v=202610011015"></script>
 </body>
 </html>

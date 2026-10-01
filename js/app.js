@@ -329,10 +329,10 @@ function renderDetail(c) {
   }).join("");
 
   $("#view-detail").innerHTML = `
-    <button class="detail-back" id="back-btn">← Zpět na přehled</button>
+    <div class="detail-nav"><button class="mode-toggle detail-back" id="back-btn" title="Zpět na přehled klientů">← Zpět na přehled</button></div>
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
+      <div class="detail-head">
+        <div class="detail-jmeno">
           <div id="jmeno-zobraz">
             <h2>${esc(c.jmeno)} ${esc(c.prijmeni)}
               <button class="onb-add-btn jmeno-upravit" id="jmeno-upravit" title="Upravit jméno, příjmení nebo firmu">Upravit</button>
@@ -346,7 +346,7 @@ function renderDetail(c) {
             <div class="onb-field full"><button class="mode-toggle active" id="je-hotovo">Hotovo</button></div>
           </div>
         </div>
-        <div>
+        <div class="detail-akce">
           <a class="mode-toggle" id="formular-otevrit" target="_blank" rel="noopener"
              href="onboarding.html?klient=${esc(c.id)}"
              title="${c.onboarding ? "Otevře formulář předvyplněný údaji z karty — upravíte a uložíte." : "Otevře vstupní dotazník tohoto klienta — vyplníte ho vy na schůzce."}">${c.onboarding ? "Upravit ve formuláři" : "Vyplnit vstupní formulář"}</a>
@@ -361,7 +361,8 @@ function renderDetail(c) {
       <div id="zmeny-panel" class="zmeny-panel" hidden></div>
       <div id="copy4fin-panel" hidden></div>
       <div id="normal-panel"></div>
-    </div>`;
+    </div>
+    <div class="detail-nav detail-nav-dole"><button class="mode-toggle detail-back" id="back-btn-dole" title="Zpět na přehled klientů">← Zpět na přehled</button></div>`;
 
   $("#normal-panel").innerHTML = `
       <div class="src-section src-client">
@@ -470,7 +471,8 @@ function renderDetail(c) {
       <div class="note-block"><label>Poznámka NŽP</label>${esc(c.poznamka_nzp || "—")}</div>
       <div class="note-block"><label>Poznámky od Lenky</label>${esc(c.poznamky_lenka || "—")}</div>`;
 
-  $("#back-btn").addEventListener("click", showListView);
+  $("#back-btn").addEventListener("click", zpetNaPrehled);
+  $("#back-btn-dole").addEventListener("click", zpetNaPrehled);
   $("#pdf-btn").addEventListener("click", () => stahniKartuJakoPdf(c, { ...CONFIG, dokumentyStavy: DOKUMENTY_CFG.stavy }));
   $("#formular-odkaz").addEventListener("click", async () => {
     const url = new URL(`onboarding.html?klient=${encodeURIComponent(c.id)}`, location.href).href;
@@ -1095,6 +1097,36 @@ function downloadJson() {
   a.download = currentClientId ? `klient_${currentClientId}.json` : "klienti_index.json";
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+/**
+ * Zpět z karty. Když má otevřený klient neuložené změny, zeptá se:
+ * uložit / zahodit / zůstat. Bez dotazu by změny přežily jen do obnovení stránky.
+ */
+async function zpetNaPrehled() {
+  const id = currentClientId;
+  if (!id || !dirty.has(id)) { showListView(); return; }
+  const volba = await dialogNeulozene();
+  if (volba === "zustat") return;
+  if (volba === "ulozit") {
+    await saveAll();
+    if (dirty.has(id)) return;          // uložení selhalo — chyba je zobrazená, zůstat v kartě
+  } else {
+    CLIENTS.delete(id);                 // zahodit = příště načíst znovu z úložiště
+    dirty.delete(id);
+    updateSaveBar();
+  }
+  showListView();
+}
+
+function dialogNeulozene() {
+  return new Promise((resolve) => {
+    const d = $("#dialog-neulozene");
+    d.hidden = false;
+    const hotovo = (v) => { d.hidden = true; d.querySelectorAll("[data-volba]").forEach((b) => (b.onclick = null)); resolve(v); };
+    d.querySelectorAll("[data-volba]").forEach((b) => (b.onclick = () => hotovo(b.dataset.volba)));
+    d.querySelector("[data-volba=zustat]").focus();
+  });
 }
 
 function showListView() {
