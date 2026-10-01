@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
 
   let form: FormData;
   try { form = await req.formData(); } catch { return json({ chyba: "telo" }, 400); }
-  const p = await overToken(form.get("token"));
+  const p = await overToken(form.get("token"), form.get("heslo") || undefined);
   if (p instanceof Response) return p;
 
   const soubor = form.get("soubor");

@@ -32,3 +32,30 @@ function bezpecnyNazevSouboru(puvodni, pripona) {
     .replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "soubor";
   return `${bez}.${pripona}`;
 }
+
+/**
+ * Fotky z mobilu mají 5–8 MB; při retenci 10 let je to zbytečná kapacita.
+ * Obrázek (JPG/PNG/HEIC) nad ~1,5 MB → delší strana max 2000 px, JPG 85 %.
+ * PDF a malé soubory beze změny. Když prohlížeč formát neumí dekódovat
+ * (HEIC mimo Safari), vrátí se původní soubor — kontrola typu proběhne až potom.
+ */
+async function zkomprimujObrazek(file, { prahMB = 1.5, maxPx = 2000, kvalita = 0.85 } = {}) {
+  if (file.size <= prahMB * 1024 * 1024) return file;
+  const typ = await rozpoznejTypSouboru(file);
+  if (!typ || typ.mime === "application/pdf") return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, maxPx / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * k), h = Math.round(bmp.height * k);
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    canvas.getContext("2d").drawImage(bmp, 0, 0, w, h);
+    bmp.close && bmp.close();
+    const blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", kvalita));
+    if (!blob || blob.size >= file.size) return file;
+    const nazev = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+    return new File([blob], nazev, { type: "image/jpeg", lastModified: Date.now() });
+  } catch {
+    return file;
+  }
+}

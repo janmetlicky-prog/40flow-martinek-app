@@ -109,22 +109,24 @@ class SupabaseStorage {
   // Samotný token uvidí poradce jednou — v odkazu, který zkopíruje.
 
   async aktivniOdkaz(klientId) {
-    const r = await this._rest(`klient_pristup?klient_id=eq.${encodeURIComponent(klientId)}&aktivni=eq.true&select=id,platnost_do,vytvoreno,pouzito_naposledy`);
-    return r[0] || null;
+    const r = await this._rest(`klient_pristup?klient_id=eq.${encodeURIComponent(klientId)}&aktivni=eq.true&select=id,platnost_do,vytvoreno,pouzito_naposledy,heslo_hash,blokovano_do`);
+    if (!r[0]) return null;
+    const { heslo_hash, ...zbytek } = r[0];
+    return { ...zbytek, chraneno: !!heslo_hash };   // hash se do UI nedostane
   }
 
-  async vytvorOdkaz(klientId, vytvoril) {
+  /** Token vzniká tady; do databáze jde SHA-256 tokenu a (volitelně) bcrypt hesla — přes RPC, ne přímo. */
+  async vytvorOdkaz(klientId, vytvoril, heslo = "") {
     const bytes = crypto.getRandomValues(new Uint8Array(32));
     const token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
     const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
     const token_hash = [...new Uint8Array(hashBuf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-    await this.zneplatnitOdkaz(klientId);   // jeden aktivní odkaz na klienta
-    await this._rest("klient_pristup", {
+    await this._rest("rpc/vytvor_odkaz", {
       method: "POST",
-      body: JSON.stringify({ klient_id: klientId, token_hash, aktivni: true, vytvoril: vytvoril || null }),
+      body: JSON.stringify({ p_klient_id: klientId, p_token_hash: token_hash, p_heslo: heslo || null }),
     });
     const url = new URL(`onboarding.html?klient=${encodeURIComponent(klientId)}&k=${token}`, location.href).href;
-    return { url, platnost_do: new Date(Date.now() + 30 * 86400_000).toISOString() };
+    return { url, platnost_do: new Date(Date.now() + 30 * 86400_000).toISOString(), chraneno: !!heslo };
   }
 
   async zneplatnitOdkaz(klientId) {
@@ -155,26 +157,37 @@ class SupabaseStorage {
       throw new StorageError("offline", "Nelze se připojit — zkontrolujte internetové připojení.");
     }
     const telo = await r.json().catch(() => ({}));
-    if (r.status === 401) throw new StorageError("neplatny_odkaz", "Odkaz není platný nebo vypršel. Požádejte svého poradce o nový.");
-    if (r.status === 429) throw new StorageError("limit", "Příliš mnoho pokusů. Zkuste to prosím za hodinu.");
-    if (r.status === 409) throw new StorageError("konflikt", "Poradce mezitím údaje upravil. Obnovte stránku a zkuste to znovu.");
+    this._chybaKlienta(r.status, telo);
     if (!r.ok) throw new StorageError("chyba", "Uložení se nezdařilo. Zkuste to prosím znovu.");
     return telo;
   }
-  klientPristup(token) { return this._fn("klient_pristup", { token }); }
-  klientUlozit(token, onboarding) { return this._fn("klient_ulozit", { token, onboarding }); }
+  /** Společné hlášky pro klientský režim (token / heslo / limit). */
+  _chybaKlienta(status, telo) {
+    if (status === 401 && telo.chyba === "heslo_vyzadovano") throw new StorageError("heslo_vyzadovano", "Odkaz je chráněn heslem.");
+    if (status === 401 && telo.chyba === "spatne_heslo") throw new StorageError("spatne_heslo", `Nesprávné heslo. Zbývá ${telo.zbyva} ${telo.zbyva === 1 ? "pokus" : "pokusy"}.`);
+    if (status === 403 && telo.chyba === "blokovano") {
+      const d = new Date(telo.do);
+      throw new StorageError("blokovano", `Příliš mnoho špatných pokusů. Zkuste to znovu po ${isNaN(d) ? "15 minutách" : d.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })}.`);
+    }
+    if (status === 401) throw new StorageError("neplatny_odkaz", "Odkaz není platný nebo vypršel. Požádejte svého poradce o nový.");
+    if (status === 429) throw new StorageError("limit", "Příliš mnoho pokusů. Zkuste to prosím za hodinu.");
+    if (status === 409) throw new StorageError("konflikt", "Poradce mezitím údaje upravil. Obnovte stránku a zkuste to znovu.");
+  }
+  klientPristup(token, heslo) { return this._fn("klient_pristup", { token, heslo: heslo || undefined }); }
+  klientUlozit(token, onboarding, heslo) { return this._fn("klient_ulozit", { token, onboarding, heslo: heslo || undefined }); }
 
   /** Klient nahrává přes edge funkci (multipart) — server rozhoduje o typu i velikosti. */
-  async klientUpload(token, file, { checklist_klic = "", dokument_id = "" } = {}) {
+  async klientUpload(token, file, { checklist_klic = "", dokument_id = "", heslo = "" } = {}) {
     const fd = new FormData();
     fd.append("token", token); fd.append("soubor", file, file.name);
+    if (heslo) fd.append("heslo", heslo);
     if (checklist_klic) fd.append("checklist_klic", checklist_klic);
     if (dokument_id) fd.append("dokument_id", dokument_id);
     let r;
     try { r = await fetch(`${this.url}/functions/v1/klient_upload`, { method: "POST", body: fd }); }
     catch { throw new StorageError("offline", "Nelze se připojit — zkontrolujte internetové připojení."); }
     const telo = await r.json().catch(() => ({}));
-    if (r.status === 401) throw new StorageError("neplatny_odkaz", "Odkaz není platný nebo vypršel. Požádejte svého poradce o nový.");
+    this._chybaKlienta(r.status, telo);
     if (r.status === 413) throw new StorageError("velikost", `Soubor je větší než ${telo.max_mb || 15} MB.`);
     if (r.status === 400 && telo.chyba === "typ") throw new StorageError("typ", "Povolené jsou jen PDF, JPG, PNG a HEIC (posuzuje se obsah souboru, ne přípona).");
     if (r.status === 429) throw new StorageError("limit", "Příliš mnoho pokusů. Zkuste to prosím za hodinu.");

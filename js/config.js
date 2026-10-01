@@ -45,6 +45,14 @@ const CONFIG = {
     { key: "uver_bydleni", label: "Úvěr na bydlení" },
   ],
 
+  // Oblasti mimo tabulku přehledu — v kartě se ukážou jen když mají položku, stav nebo fázi.
+  extraOblasti: [
+    { key: "eucs", label: "EUCS (likvidace pojistných událostí)" },
+    { key: "podnikatelska_rizika", label: "Podnikatelská rizika" },
+    { key: "penze", label: "Penze" },
+    { key: "ostatni", label: "Ostatní" },
+  ],
+
   productStates: [
     "Budeme řešit", "Audit", "Nebudeme řešit", "Pozdějí",
     "Rozpracováno", "Předáno", "Hotovo",

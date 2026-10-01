@@ -1,11 +1,93 @@
 {
-  "_komentar": "Mapování typu smlouvy z klientského formuláře na produktovou oblast karty. Porovnává se malými písmeny jako podřetězec; pořadí = priorita (specifičtější dřív). Nepřiřazený typ spadne do oblasti 'ostatni'.",
+  "_komentar": "Mapování typu smlouvy z klientského formuláře na produktovou oblast karty. Porovnává se malými písmeny jako podřetězec; pořadí = priorita (specifičtější dřív). Nepřiřazený typ spadne do oblasti 'ostatni'. Nové oblasti (eucs, podnikatelska_rizika, penze) se v kartě ukážou jen když mají položku, stav nebo fázi.",
   "mapovani": [
-    { "oblast": "uver_bydleni", "klice": ["hypoté", "bydlen", "stavební spoř"] },
-    { "oblast": "uver",         "klice": ["úvěr", "uver", "půjčk", "pujck", "leasing", "kreditn", "spotřeb"] },
-    { "oblast": "zivot",        "klice": ["život", "zivot", "rizikov"] },
-    { "oblast": "investice",    "klice": ["invest", "podílov", "podilov", "dps", "penzij", "doplňkov"] },
-    { "oblast": "nezivot",      "klice": ["neživot", "nezivot", "majetk", "povinné ručení", "povinne ruceni", "havarij", "cestovn", "odpovědnost", "odpovednost", "úraz", "uraz", "domácnost", "domacnost"] }
+    {
+      "oblast": "uver_bydleni",
+      "klice": [
+        "hypoté",
+        "bydlen",
+        "stavební spoř"
+      ]
+    },
+    {
+      "oblast": "uver",
+      "klice": [
+        "úvěr",
+        "uver",
+        "půjčk",
+        "pujck",
+        "leasing",
+        "kreditn",
+        "spotřeb"
+      ]
+    },
+    {
+      "oblast": "eucs",
+      "klice": [
+        "eucs",
+        "likvidac",
+        "pojistná událost",
+        "pojistna udalost",
+        "pojistné události",
+        "škodn"
+      ]
+    },
+    {
+      "oblast": "podnikatelska_rizika",
+      "klice": [
+        "podnikat",
+        "odpovědnost podnikatele",
+        "odpovednost podnikatele",
+        "profesní odpovědnost",
+        "profesni odpovednost"
+      ]
+    },
+    {
+      "oblast": "penze",
+      "klice": [
+        "penzij",
+        "penze",
+        "důchod",
+        "duchod"
+      ]
+    },
+    {
+      "oblast": "zivot",
+      "klice": [
+        "život",
+        "zivot",
+        "rizikov"
+      ]
+    },
+    {
+      "oblast": "investice",
+      "klice": [
+        "invest",
+        "podílov",
+        "podilov",
+        "dip",
+        "dlouhodob",
+        "doplňkov"
+      ]
+    },
+    {
+      "oblast": "nezivot",
+      "klice": [
+        "neživot",
+        "nezivot",
+        "majetk",
+        "povinné ručení",
+        "povinne ruceni",
+        "havarij",
+        "cestovn",
+        "odpovědnost",
+        "odpovednost",
+        "úraz",
+        "uraz",
+        "domácnost",
+        "domacnost"
+      ]
+    }
   ],
   "vychozi": "ostatni"
 }

@@ -11,9 +11,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ chyba: "metoda" }, 405);
 
-  let body: { token?: unknown } = {};
+  let body: { token?: unknown; heslo?: unknown } = {};
   try { body = await req.json(); } catch { /* prázdné tělo */ }
-  const p = await overToken(body.token);
+  const p = await overToken(body.token, body.heslo);
   if (p instanceof Response) return p;
 
   const db = admin();

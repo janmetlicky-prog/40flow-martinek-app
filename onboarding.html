@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bohatněte s rozumem — Vstupní dotazník</title>
-  <link rel="stylesheet" href="css/style.css?v=202610010754">
+  <link rel="stylesheet" href="css/style.css?v=202610010809">
 </head>
 <body>
 
@@ -22,6 +22,16 @@
 
     <!-- Klientský režim (odkaz s tokenem) -->
     <div class="onb-klient-uvod" id="klient-uvod" hidden>Načítám…</div>
+    <div class="onb-klient-neplatny" id="klient-heslo" hidden>
+      <span class="logo-mark">B</span>
+      <h2>Odkaz je chráněn heslem</h2>
+      <p>Heslo vám sdělil váš poradce.</p>
+      <div style="max-width:320px;margin:14px auto 0;text-align:left">
+        <input id="klient-heslo-input" type="password" autocomplete="off" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--radius);font-size:15px">
+        <div class="login-error" id="klient-heslo-chyba"></div>
+        <button type="button" class="next" id="klient-heslo-btn" style="width:100%;margin-top:10px;background:var(--ink);color:var(--bg);border:none;border-radius:var(--radius);padding:11px;font-size:14px;font-weight:600">Pokračovat</button>
+      </div>
+    </div>
     <div class="onb-klient-neplatny" id="klient-neplatny" hidden>
       <span class="logo-mark">B</span>
       <h2>Odkaz není platný nebo vypršel</h2>
@@ -48,11 +58,13 @@
     <form id="onb-form" novalidate>
       <div id="steps"></div>
       <div class="onb-nav">
-        <button type="button" class="prev" id="btn-prev">← Zpět</button>
-        <div>
-          <button type="button" class="prev" id="btn-clear-draft" title="Zahodí rozpracované a začne od začátku">Vymazat rozpracované</button>
-          <button type="button" class="prev" id="btn-save-draft">Uložit a dokončit později</button>
+        <div class="onb-nav-hlavni">
+          <button type="button" class="prev velky" id="btn-prev">← Zpět</button>
           <button type="button" class="next" id="btn-next">Pokračovat →</button>
+        </div>
+        <div class="onb-nav-vedlejsi">
+          <button type="button" class="prev" id="btn-save-draft">Uložit a dokončit později</button>
+          <button type="button" class="prev" id="btn-clear-draft" title="Zahodí rozpracované a začne od začátku">Vymazat rozpracované</button>
         </div>
       </div>
       <div class="onb-progress-label" id="draft-status" style="margin-top:10px"></div>
@@ -69,14 +81,14 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=202610010754"></script>
-  <script src="js/app-config.js?v=202610010754"></script>
-  <script src="js/auth.js?v=202610010754"></script>
-  <script src="js/storage.demo.js?v=202610010754"></script>
-  <script src="js/storage.supabase.js?v=202610010754"></script>
-  <script src="js/storage.js?v=202610010754"></script>
-  <script src="js/soubor.js?v=202610010754"></script>
-  <script src="js/mapper.js?v=202610010754"></script>
-  <script src="js/onboarding.js?v=202610010754"></script>
+  <script src="js/config.js?v=202610010809"></script>
+  <script src="js/app-config.js?v=202610010809"></script>
+  <script src="js/auth.js?v=202610010809"></script>
+  <script src="js/storage.demo.js?v=202610010809"></script>
+  <script src="js/storage.supabase.js?v=202610010809"></script>
+  <script src="js/storage.js?v=202610010809"></script>
+  <script src="js/soubor.js?v=202610010809"></script>
+  <script src="js/mapper.js?v=202610010809"></script>
+  <script src="js/onboarding.js?v=202610010809"></script>
 </body>
 </html>

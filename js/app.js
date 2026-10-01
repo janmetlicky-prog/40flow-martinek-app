@@ -271,7 +271,10 @@ function renderDetail(c) {
 
   // Oblast „Ostatní" vzniká rozřazením smluv, které nikam nepatří — zobrazit, pokud existuje
   const oblastiSeznam = [...CONFIG.productFields];
-  if (c.oblasti && c.oblasti.ostatni) oblastiSeznam.push({ key: "ostatni", label: "Ostatní" });
+  for (const ex of CONFIG.extraOblasti || []) {
+    const o = c.oblasti && c.oblasti[ex.key];
+    if (o && (o.stav || o.faze || (o.polozky || []).length)) oblastiSeznam.push(ex);
+  }
 
   const productRows = oblastiSeznam.map((p) => {
     const ob = (c.oblasti && c.oblasti[p.key]) || { stav: "", faze: "", faze_historie: [], poznamka: "" };
@@ -360,6 +363,11 @@ function renderDetail(c) {
     </div>`;
 
   $("#normal-panel").innerHTML = `
+      <div class="src-section src-client">
+        <h3>Základní údaje <span class="src-badge client">klient i tým</span></h3>
+        <div class="advisor-grid" id="zakladni-grid">${renderZakladni(c)}</div>
+      </div>
+
       <h3>Identifikace</h3>
       <div class="field-grid">
         ${field("Stav", c.stav)}
@@ -420,9 +428,6 @@ function renderDetail(c) {
       <h3>Dokumenty</h3>
       ${renderDokumenty(c)}
 
-      <h3>IDA / investiční dotazník</h3>
-      <div class="onb-field"><label>Odkaz (URL)</label>
-        <input type="url" id="ida-url" value="${esc(c.ida_url || "")}" placeholder="https://…"></div>
 
       <h3>Časová osa cílů</h3>
       <div id="cile-list">
@@ -448,6 +453,16 @@ function renderDetail(c) {
       <div class="src-section src-advisor">
         <h3>Údaje doplňované poradcem <span class="src-badge advisor">doplňuje poradce</span></h3>
         <div class="advisor-grid" id="advisor-grid">${renderAdvisorFields(c)}</div>
+      </div>
+
+      <div class="src-section src-advisor">
+        <h3>Dotazníky <span class="src-badge advisor">jen tým</span></h3>
+        <div class="advisor-grid">
+          <div class="onb-field"><label>IDA / investiční dotazník (URL)</label>
+            <input type="url" id="ida-url" value="${esc(c.ida_url || "")}" placeholder="https://…"></div>
+          <div class="onb-field"><label>Zdravotní dotazník (URL)</label>
+            <input type="url" id="zdravotni-url" value="${esc((c.poradce || {}).zdravotni_dotaznik_url || "")}" placeholder="https://…"></div>
+        </div>
       </div>
 
       <h3>Poznámky</h3>
@@ -689,10 +704,20 @@ function renderDetail(c) {
     renderDetail(c);
   });
 
-  // IDA + cíle
-  $("#ida-url").addEventListener("change", () => {
-    c.ida_url = $("#ida-url").value.trim();
+  // Dotazníky
+  $("#ida-url").addEventListener("change", () => { c.ida_url = $("#ida-url").value.trim(); markDirty(c.id); });
+  $("#zdravotni-url").addEventListener("change", () => {
+    if (!c.poradce) c.poradce = {};
+    c.poradce.zdravotni_dotaznik_url = $("#zdravotni-url").value.trim();
     markDirty(c.id);
+  });
+  // Základní údaje (žijí v onboarding jsonb — klient je vidí a doplňuje)
+  $("#zakladni-grid").querySelectorAll("input").forEach((el) => {
+    el.addEventListener("change", () => {
+      if (!c.onboarding) c.onboarding = {};
+      c.onboarding[el.name] = el.value.trim();
+      markDirty(c.id);
+    });
   });
   $("#cil-add").addEventListener("click", () => {
     if (!Array.isArray(c.cile)) c.cile = [];
@@ -785,15 +810,28 @@ async function nactiOdkazPanel(c) {
   try { aktivni = await Storage.aktivniOdkaz(c.id); } catch { /* panel zůstane skrytý */ }
 
   const vykresli = (nove) => {
-    if (!aktivni && !nove) { panel.hidden = true; btn.textContent = "Vytvořit odkaz pro klienta"; return; }
+    if (!aktivni && !nove) {
+      // volby před vytvořením: heslo je volitelné, sdělí se klientovi jinou cestou než odkaz
+      panel.hidden = false;
+      btn.textContent = "Vytvořit odkaz pro klienta";
+      panel.innerHTML = `
+        <label class="check-inline"><input type="checkbox" id="odkaz-heslo-chk"> Chránit odkaz heslem</label>
+        <div id="odkaz-heslo-blok" hidden style="margin-top:8px">
+          <input id="odkaz-heslo" type="text" placeholder="heslo pro klienta (min. 4 znaky)" autocomplete="off" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius)">
+          <div class="muted-small">Heslo klientovi sdělte jinak než odkazem (telefonicky, SMS). Po vytvoření už ho nikde neuvidíte.</div>
+        </div>`;
+      $("#odkaz-heslo-chk").addEventListener("change", (e) => { $("#odkaz-heslo-blok").hidden = !e.target.checked; });
+      return;
+    }
     btn.textContent = "Nový odkaz pro klienta";
     const platnost = fmtCas((nove || aktivni).platnost_do);
     panel.hidden = false;
+    const chraneno = (nove || aktivni).chraneno ? ` <span class="src-badge advisor">chráněno heslem</span>` : "";
     panel.innerHTML = nove
-      ? `<div><strong>Odkaz pro klienta je vytvořený.</strong> Zkopírujte ho teď — podruhé se už nezobrazí.</div>
+      ? `<div><strong>Odkaz pro klienta je vytvořený.</strong>${chraneno} Zkopírujte ho teď — podruhé se už nezobrazí.</div>
          <div class="odkaz-radek"><input readonly id="odkaz-url" value="${esc(nove.url)}"><button class="mode-toggle active" id="odkaz-kopirovat">Kopírovat</button></div>
          <div class="muted-small">Platí do ${platnost}. <button class="onb-add-btn" id="odkaz-zneplatnit">Zneplatnit odkaz</button></div>`
-      : `<div>Klient má aktivní odkaz (vytvořen ${fmtCas(aktivni.vytvoreno)}${aktivni.pouzito_naposledy ? `, naposledy otevřen ${fmtCas(aktivni.pouzito_naposledy)}` : ", zatím neotevřen"}), platí do ${platnost}.
+      : `<div>Klient má aktivní odkaz${chraneno} (vytvořen ${fmtCas(aktivni.vytvoreno)}${aktivni.pouzito_naposledy ? `, naposledy otevřen ${fmtCas(aktivni.pouzito_naposledy)}` : ", zatím neotevřen"}), platí do ${platnost}.
            Samotný odkaz se znovu nezobrazuje — když ho klient ztratil, vytvořte nový.</div>
          <div class="muted-small" style="margin-top:6px"><button class="onb-add-btn" id="odkaz-zneplatnit">Zneplatnit odkaz</button></div>`;
     $("#odkaz-kopirovat")?.addEventListener("click", async () => {
@@ -810,10 +848,13 @@ async function nactiOdkazPanel(c) {
 
   btn.onclick = async () => {
     if (aktivni && !confirm("Klient už jeden odkaz má. Vytvořit nový? Starý přestane platit.")) return;
+    const chk = $("#odkaz-heslo-chk");
+    const heslo = chk && chk.checked ? ($("#odkaz-heslo").value || "").trim() : "";
+    if (chk && chk.checked && heslo.length < 4) { showError(new Error("Heslo musí mít alespoň 4 znaky.")); return; }
     btn.disabled = true;
     try {
-      const nove = await Storage.vytvorOdkaz(c.id, session.id || null);
-      aktivni = { platnost_do: nove.platnost_do, vytvoreno: new Date().toISOString() };
+      const nove = await Storage.vytvorOdkaz(c.id, session.id || null, heslo);
+      aktivni = { platnost_do: nove.platnost_do, vytvoreno: new Date().toISOString(), chraneno: nove.chraneno };
       vykresli(nove);
     } catch (err) { showError(err); }
     finally { btn.disabled = false; }
@@ -824,6 +865,7 @@ async function nactiOdkazPanel(c) {
 // Změny od klienta — „klient upravil N polí"
 // ---------------------------------------------------------------------------
 const POLE_NAZVY = {
+  partner: "Partner / partnerka", deti_pocet: "Děti (počet)", deti_veky: "Věky dětí", zamestnavatel: "Zaměstnavatel",
   telefon: "Telefon", email: "E-mail", adresa_trvala: "Trvalá adresa", adresa_korespondencni: "Korespondenční adresa",
   adresa_korespondencni_shodna: "Korespondenční = trvalá", rodinny_stav: "Rodinný stav", povolani: "Povolání",
   zdroj_prijmu: "Zdroj příjmů", bilance: "Finanční bilance", smlouvy: "Aktivní smlouvy",
@@ -909,6 +951,7 @@ function renderDokumenty(c) {
 /** Tým nahrává přímo do bucketu; řádek se uloží s kartou. */
 async function nahrajDokumentTymu(c, file, idx) {
   if (!Storage.nahrajSoubor) { showError(new Error("Nahrávání souborů funguje jen v ostrém režimu.")); return; }
+  file = await zkomprimujObrazek(file);   // fotky z mobilu zmenšit, PDF beze změny
   const chyba = await overSoubor(file);
   if (chyba) { showError(new Error(chyba)); return; }
   $("#save-status").textContent = `Nahrávám ${file.name}…`;
@@ -925,6 +968,19 @@ async function nahrajDokumentTymu(c, file, idx) {
     await openDetail(c.id);
     $("#save-status").textContent = `Nahráno: ${file.name} ✓`;
   } catch (err) { showError(err); $("#save-status").textContent = ""; }
+}
+
+const ZAKLADNI_POLE = [
+  { key: "partner", label: "Partner / partnerka (jméno)" },
+  { key: "deti_pocet", label: "Děti (počet)", type: "number" },
+  { key: "deti_veky", label: "Věky dětí", placeholder: "např. 4, 9" },
+  { key: "povolani", label: "Povolání" },
+  { key: "zamestnavatel", label: "Zaměstnavatel" },
+];
+function renderZakladni(c) {
+  const o = c.onboarding || {};
+  return ZAKLADNI_POLE.map((f) => `<div class="onb-field"><label>${f.label}</label>
+    <input type="${f.type || "text"}" name="${f.key}" value="${esc(o[f.key] ?? "")}" placeholder="${esc(f.placeholder || "")}"></div>`).join("");
 }
 
 function renderAdvisorFields(c) {

@@ -22,6 +22,7 @@ export const ALLOWED_ONBOARDING = [
   "telefon", "email",
   "adresa_trvala", "adresa_korespondencni_shodna", "adresa_korespondencni",
   "rodinny_stav", "povolani", "zdroj_prijmu",
+  "zamestnavatel", "partner", "deti_pocet", "deti_veky",
   "bilance", "smlouvy",
 ] as const;
 
@@ -51,14 +52,37 @@ export interface Pristup { id: string; klient_id: string; platnost_do: string; }
  * Ověří token, uplatní rate limit a zapíše pouzito_naposledy.
  * Vrací přístup, nebo hotovou chybovou Response.
  */
-export async function overToken(token: unknown): Promise<Pristup | Response> {
+export const MAX_POKUSU_HESLA = 3;
+export const BLOKACE_MINUT = 15;
+
+export async function overToken(token: unknown, heslo?: unknown): Promise<Pristup | Response> {
   if (typeof token !== "string" || token.length < 32 || token.length > 128) return NEPLATNY();
   const db = admin();
   const hash = await sha256(token);
   const { data: p } = await db.from("klient_pristup")
-    .select("id, klient_id, platnost_do, aktivni, volani_pocet, volani_od")
+    .select("id, klient_id, platnost_do, aktivni, volani_pocet, volani_od, heslo_hash, pokusy, blokovano_do")
     .eq("token_hash", hash).maybeSingle();
   if (!p || !p.aktivni || new Date(p.platnost_do) < new Date()) return NEPLATNY();
+
+  // Heslo na odkaz (volitelné). Blokace vázaná na token, ne na IP.
+  if (p.heslo_hash) {
+    if (p.blokovano_do && new Date(p.blokovano_do) > new Date()) {
+      return json({ chyba: "blokovano", do: p.blokovano_do }, 403);
+    }
+    if (typeof heslo !== "string" || !heslo) return json({ chyba: "heslo_vyzadovano" }, 401);
+    const { data: ok } = await db.rpc("over_heslo", { p_id: p.id, p_heslo: heslo });
+    if (!ok) {
+      const pokusy = (p.pokusy || 0) + 1;
+      if (pokusy >= MAX_POKUSU_HESLA) {
+        const doKdy = new Date(Date.now() + BLOKACE_MINUT * 60_000).toISOString();
+        await db.from("klient_pristup").update({ pokusy: 0, blokovano_do: doKdy }).eq("id", p.id);
+        return json({ chyba: "blokovano", do: doKdy }, 403);
+      }
+      await db.from("klient_pristup").update({ pokusy }).eq("id", p.id);
+      return json({ chyba: "spatne_heslo", zbyva: MAX_POKUSU_HESLA - pokusy }, 401);
+    }
+    if (p.pokusy) await db.from("klient_pristup").update({ pokusy: 0 }).eq("id", p.id);
+  }
 
   // rate limit: klouzavé hodinové okno per token
   const okno = new Date(p.volani_od);
@@ -106,6 +130,6 @@ export function jenPovolene(onb: Record<string, unknown> | null | undefined) {
   if (out.adresa_korespondencni_shodna == null) out.adresa_korespondencni_shodna = true;
   if (!out.bilance) out.bilance = { prijmy: [], vydaje: [], zavazky: [] };
   if (!Array.isArray(out.smlouvy)) out.smlouvy = [];
-  for (const k of ["telefon", "email", "rodinny_stav", "povolani", "zdroj_prijmu"]) if (out[k] == null) out[k] = "";
+  for (const k of ["telefon", "email", "rodinny_stav", "povolani", "zdroj_prijmu", "zamestnavatel", "partner", "deti_pocet", "deti_veky"]) if (out[k] == null) out[k] = "";
   return out;
 }

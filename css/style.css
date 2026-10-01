@@ -320,3 +320,12 @@ body.rezim-klient #btn-save-storage, body.rezim-klient #btn-download, body.rezim
 .odkaz-radek input { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--mono, monospace); font-size: 12px; }
 .zmeny-hlava { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .dok-nahrat-lbl { cursor: pointer; display: inline-block; }
+
+/* --- F2: navigace formuláře --------------------------------------------- */
+.onb-nav { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+.onb-nav-hlavni { display: flex; gap: 10px; justify-content: space-between; }
+.onb-nav-hlavni button { flex: 1; padding: 12px 18px; font-size: 15px; }
+.onb-nav .prev.velky { border: 2px solid var(--ink); color: var(--ink); font-weight: 600; }
+.onb-nav-vedlejsi { display: flex; gap: 8px; flex-wrap: wrap; }
+.onb-nav-vedlejsi button { font-size: 12px; padding: 7px 12px; }
+.onb-zpet-nahore { background: none; border: none; color: var(--ink); font-weight: 600; font-size: 13px; padding: 0; margin-bottom: 8px; border-bottom: 2px solid var(--accent); cursor: pointer; }

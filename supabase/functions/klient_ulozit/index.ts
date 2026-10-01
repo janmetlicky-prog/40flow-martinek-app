@@ -37,9 +37,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ chyba: "metoda" }, 405);
 
-  let body: { token?: unknown; onboarding?: Record<string, unknown> } = {};
+  let body: { token?: unknown; heslo?: unknown; onboarding?: Record<string, unknown> } = {};
   try { body = await req.json(); } catch { return json({ chyba: "telo" }, 400); }
-  const p = await overToken(body.token);
+  const p = await overToken(body.token, body.heslo);
   if (p instanceof Response) return p;
   if (!body.onboarding || typeof body.onboarding !== "object") return json({ chyba: "telo" }, 400);
 

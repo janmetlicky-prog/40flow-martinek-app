@@ -15,6 +15,8 @@ const PARAMS = new URLSearchParams(location.search);
 const KLIENT_ID = PARAMS.get("klient") || "";
 const KLIENT_TOKEN = PARAMS.get("k") || "";          // klientský režim: odkaz s tokenem
 const REZIM_KLIENT = !!KLIENT_TOKEN;
+const HESLO_KEY = `40flow_k_heslo_${KLIENT_ID}`;
+let klientHeslo = (() => { try { return sessionStorage.getItem(HESLO_KEY) || ""; } catch { return ""; } })();
 const DRAFT_KEY = `40flow_onb_draft_${REZIM_KLIENT ? "k_" : ""}${KLIENT_ID || "novy"}`;
 const MAX_FILE_MB = 5;
 
@@ -40,7 +42,11 @@ const STEPS = [
       { key: "rodinny_stav", label: "Rodinný stav", type: "select",
         options: ["Svobodný/á", "Ženatý / vdaná", "Rozvedený/á", "Vdovec / vdova", "Registrované partnerství"] },
       { key: "povolani", label: "Povolání" },
+      { key: "zamestnavatel", label: "Zaměstnavatel" },
       { key: "zdroj_prijmu", label: "Zdroj příjmů", type: "radio", options: ["OSVČ", "Zaměstnání"] },
+      { key: "partner", label: "Partner / partnerka (jméno)" },
+      { key: "deti_pocet", label: "Děti (počet)", placeholder: "0" },
+      { key: "deti_veky", label: "Věky dětí", placeholder: "např. 4, 9", full: true },
     ],
   },
   {
@@ -316,6 +322,7 @@ function renderStep() {
 
   $("#steps").innerHTML = `
     <div class="onb-step">
+      ${step > 0 ? `<button type="button" class="onb-zpet-nahore" id="btn-prev-top">← Zpět</button>` : ""}
       <h2>${s.title}</h2>
       <div class="step-hint">${s.hint}</div>
       ${body}
@@ -327,6 +334,7 @@ function renderStep() {
   $("#btn-prev").style.visibility = step === 0 ? "hidden" : "visible";
   $("#btn-next").textContent = step === STEPS.length - 1 ? (REZIM_KLIENT ? "Odeslat poradci" : "Odeslat") : "Pokračovat →";
 
+  $("#btn-prev-top")?.addEventListener("click", () => $("#btn-prev").click());
   bindStepEvents(s);
 }
 
@@ -367,16 +375,18 @@ function bindStepEvents(s) {
   }
   if (s.type === "dokumenty" && REZIM_KLIENT) {
     document.querySelectorAll(".dok-klient-nahrat").forEach((inp) => inp.addEventListener("change", async (e) => {
-      const f = e.target.files[0]; e.target.value = "";
+      let f = e.target.files[0]; e.target.value = "";
       if (!f) return;
       const err = $("#dok-klient-chyba"); err.textContent = "";
+      err.textContent = "Připravuji soubor…";
+      f = await zkomprimujObrazek(f);       // fotka z mobilu → max 2000 px, JPG 85 %
       const chyba = await overSoubor(f);
       if (chyba) { err.textContent = chyba; return; }
       err.textContent = `Nahrávám ${f.name}…`;
       try {
-        await Storage.klientUpload(KLIENT_TOKEN, f, { dokument_id: inp.dataset.id });
+        await Storage.klientUpload(KLIENT_TOKEN, f, { dokument_id: inp.dataset.id, heslo: klientHeslo });
         // obnovit seznam z serveru, ať sedí stavy
-        const d2 = await Storage.klientPristup(KLIENT_TOKEN);
+        const d2 = await Storage.klientPristup(KLIENT_TOKEN, klientHeslo);
         klientDokumenty = d2.dokumenty.map((x) => ({ ...x, checklist_klic: "", jenCteni: true }));
         data.dokumenty = klientDokumenty;
         renderStep();
@@ -549,6 +559,10 @@ function buildOnboarding() {
     adresa_korespondencni: data.adresa_korespondencni_shodna !== false ? null : data.adresa_korespondencni,
     rodinny_stav: data.rodinny_stav || "",
     povolani: data.povolani || "",
+    zamestnavatel: data.zamestnavatel || "",
+    partner: data.partner || "",
+    deti_pocet: data.deti_pocet || "",
+    deti_veky: data.deti_veky || "",
     zdroj_prijmu: data.zdroj_prijmu || "",
     bilance: data.bilance,
     smlouvy: data.smlouvy,
@@ -577,7 +591,7 @@ async function odesliPoradci() {
   const btn = $("#btn-next");
   btn.disabled = true; btn.textContent = "Odesílám…";
   try {
-    const out = await Storage.klientUlozit(KLIENT_TOKEN, record.onboarding);
+    const out = await Storage.klientUlozit(KLIENT_TOKEN, record.onboarding, klientHeslo);
     clearDraft();
     $("#onb-form").hidden = true; $("#progress").hidden = true; $("#progress-label").hidden = true;
     const chybi = (out.chybi || []);
@@ -597,7 +611,8 @@ async function nactiKlientskyRezim() {
   document.body.classList.add("rezim-klient");
   $("#klient-uvod").hidden = false;
   try {
-    const d = await Storage.klientPristup(KLIENT_TOKEN);
+    const d = await Storage.klientPristup(KLIENT_TOKEN, klientHeslo);
+    $("#klient-heslo").hidden = true;
     const jm = `${d.klient.jmeno || ""} ${d.klient.prijmeni || ""}`.trim();
     $("#klient-uvod").innerHTML = `Dobrý den${jm ? `, ${esc(jm)}` : ""}, <strong>${esc(d.klient.poradce)}</strong> vás požádal o doplnění údajů. Odkaz platí do ${fmtDatum(d.platnost_do)}.`;
     puvodniOnboarding = d.onboarding;
@@ -607,6 +622,15 @@ async function nactiKlientskyRezim() {
     data.dokumenty = klientDokumenty;
     return true;
   } catch (err) {
+    if (err.kod === "heslo_vyzadovano" || err.kod === "spatne_heslo" || err.kod === "blokovano") {
+      // odkaz je chráněn heslem — ukázat jen pole pro heslo, nic z formuláře
+      $("#klient-uvod").hidden = true; $("#onb-form").hidden = true; $("#progress").hidden = true; $("#progress-label").hidden = true;
+      $("#klient-heslo").hidden = false;
+      $("#klient-heslo-chyba").textContent = err.kod === "heslo_vyzadovano" ? "" : err.message;
+      $("#klient-heslo-btn").disabled = err.kod === "blokovano";
+      $("#klient-heslo-input").focus();
+      return false;
+    }
     $("#klient-uvod").hidden = true;
     $("#onb-form").hidden = true;          // ani tlačítka, ani ukazatel — jen hláška
     $("#progress").hidden = true;
@@ -625,6 +649,7 @@ function naplnZOnboardingu(onb) {
     ...prazdnaData(),
     telefon: onb.telefon || "", email: onb.email || "",
     rodinny_stav: onb.rodinny_stav || "", povolani: onb.povolani || "", zdroj_prijmu: onb.zdroj_prijmu || "",
+    zamestnavatel: onb.zamestnavatel || "", partner: onb.partner || "", deti_pocet: onb.deti_pocet || "", deti_veky: onb.deti_veky || "",
     adresa_trvala: adr(onb.adresa_trvala),
     adresa_korespondencni_shodna: onb.adresa_korespondencni_shodna !== false && !onb.adresa_korespondencni,
     adresa_korespondencni: adr(onb.adresa_korespondencni),
@@ -684,7 +709,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   try { vytvorStorage(APP); } catch { /* formulář jde vyplnit i bez úložiště */ }
 
   if (REZIM_KLIENT) {
-    if (!(Storage.klientPristup) || !(await nactiKlientskyRezim())) return;   // neplatný odkaz: nic dalšího
+    const zkus = async () => {
+      klientHeslo = $("#klient-heslo-input").value;
+      try { sessionStorage.setItem(HESLO_KEY, klientHeslo); } catch { /* noop */ }
+      if (await nactiKlientskyRezim()) { $("#onb-form").hidden = false; $("#progress").hidden = false; $("#progress-label").hidden = false; renderStep(); }
+    };
+    $("#klient-heslo-btn").addEventListener("click", zkus);
+    $("#klient-heslo-input").addEventListener("keydown", (e) => { if (e.key === "Enter") zkus(); });
+    if (!(Storage.klientPristup) || !(await nactiKlientskyRezim())) return;   // neplatný odkaz / heslo: nic dalšího
   }
   // Režim poradce: předvyplnit z karty (upravit existující dotazník)
   if (!REZIM_KLIENT && KLIENT_ID && Storage.umiZapisovat && Storage.umiZapisovat()) {
