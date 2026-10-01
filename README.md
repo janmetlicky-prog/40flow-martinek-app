@@ -48,9 +48,32 @@ Tyhle kroky nejdou udělat z kódu, musí je proklikat člověk s přístupem k 
 
 Rozhodující je řádek s odkazem: `{{ .SiteURL }}?token_hash={{ .TokenHash }}&type=email`. **Nesmí** tam zůstat `{{ .ConfirmationURL }}` — to je právě ten odkaz, který skener spotřebuje.
 
+### Edge funkce — nasazení a Secrets
+
+Zdrojáky jsou v `supabase/functions/<nazev>/index.ts`, sdílený kód v `supabase/functions/_shared/`. Nasazení na jakýkoli projekt (vyžaduje access token v prostředí):
+
+```bash
+export SUPABASE_ACCESS_TOKEN=sbp_…            # Account → Access Tokens; nikdy do repa
+npx supabase@latest secrets set APP_URL=https://<adresa-aplikace> --project-ref <ref>
+for f in klient_pristup klient_ulozit klient_upload; do
+  npx supabase@latest functions deploy $f --project-ref <ref> --no-verify-jwt
+done
+```
+
+| Secret | Kdo ho nastaví | K čemu |
+|---|---|---|
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` | Supabase automaticky pro každou funkci | přístup k databázi pod service rolí — **nikdy v kódu, nikdy v repu** |
+| `APP_URL` | ručně (příkaz výše) | funkce z něj čtou `config/oblasti.json` pro rozřazení smluv |
+
+`--no-verify-jwt` je záměr: klient nemá účet, ověřuje se tokenem z odkazu (SHA-256 v `klient_pristup`). Bez toho by funkce vyžadovaly přihlášení.
+
+> **CORS je zatím `*`** (`_shared/klient.ts` → `CORS`). Přístup chrání token, ne origin, takže to teď neblokuje. **Před ostrým provozem omezit na doménu aplikace** — jeden řádek, hodnota `Access-Control-Allow-Origin`.
+
+Rate limit: 20 volání za hodinu na jeden token (klouzavé okno v `klient_pristup.volani_pocet/volani_od`). Ověřuje test `tests/test_klient_pristup.mjs` reálně — 21 voláními.
+
 ### Dvě věci, na kterých se dá naletět
 
-**Politiky RLS nestačí.** Politika říká, které řádky role uvidí; *grant* říká, jestli na tabulku vůbec smí. Bez grantů vrátí server „permission denied" i při dokonale nastavených politikách — a politiky se ani nevyhodnotí. Proto existuje `005_grants.sql`; při zakládání dalších tabulek na něj nezapomeňte.
+**Politiky RLS nestačí.** Politika říká, které řádky role uvidí; *grant* říká, jestli na tabulku vůbec smí. Bez grantů vrátí server „permission denied" i při dokonale nastavených politikách — a politiky se ani nevyhodnotí. Proto existuje `005_grants.sql`; při zakládání dalších tabulek na něj nezapomeňte. Totéž platí pro `service_role` (edge funkce): tabulky založené migrací přes Management API výchozí granty nedostanou — `009_grants_service_role.sql`. Příznak: funkce vrací „neplatný odkaz" i s platným tokenem.
 
 **Pozvánka nesmí měnit primární klíč.** Když už řádek v `uzivatele` existuje (například ze seedu) a odkazují na něj cizí klíče, nejde mu přepsat `id` na nově vzniklé auth id — databáze to odmítne. Správný postup je opačný: auth účet se zakládá **s uuid existujícího řádku** (`POST /auth/v1/admin/users` s polem `id`). Tím zůstanou historie komentářů i přiřazení klientů napojené. Edge funkce `pozvat_uzivatele` to musí dělat takto.
 

@@ -108,6 +108,17 @@ await sTestovacimiKlienty(d, [ID], async () => {
   overit("přidání smluv (dřív prázdné) se neloguje jako změna", !zm.some((z) => z.pole === "smlouvy"));
   overit("odpověď nese seznam chybějícího", Array.isArray(u.telo.chybi) && u.telo.chybi.includes("Občanský průkaz"));
 
+  console.log("\nrate limit (20 volání / token / hodinu) — reálně:");
+  const token3 = await zalozToken();
+  const stavy = [];
+  for (let i = 1; i <= 21; i++) stavy.push((await fn("klient_pristup", { token: token3 })).status);
+  overit("prvních 20 volání prošlo (200)", stavy.slice(0, 20).every((s) => s === 200), stavy.slice(0, 20).join(","));
+  overit("21. volání odmítnuto (429)", stavy[20] === 429, String(stavy[20]));
+  overit("22. volání pořád 429 (limit drží)", (await fn("klient_pristup", { token: token3 })).status === 429);
+  overit("i zápis je omezený (klient_ulozit → 429)", (await fn("klient_ulozit", { token: token3, onboarding: { telefon: "x" } })).status === 429);
+  const dalsi = await zalozToken();
+  overit("jiný token není limitem dotčen", (await fn("klient_pristup", { token: dalsi })).status === 200);
+
   async function zalozTokenVyprsely() { return zalozToken(new Date(Date.now() - 60_000).toISOString()); }
 });
 
