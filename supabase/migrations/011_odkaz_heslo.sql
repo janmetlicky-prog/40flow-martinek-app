@@ -5,7 +5,8 @@
 -- Blokace po 3 neúspěšných pokusech je vázaná na řádek tokenu, ne na IP —
 -- klient za firemním NAT by jinak blokoval kolegy.
 
-create extension if not exists pgcrypto;
+-- pgcrypto žije v Supabase ve schématu `extensions` — proto search_path níže
+create extension if not exists pgcrypto with schema extensions;
 
 alter table klient_pristup
   add column if not exists heslo_hash   text,
@@ -15,7 +16,7 @@ alter table klient_pristup
 -- Vytvoření odkazu (tým, přes RLS): zneplatní starý, uloží hash tokenu a případně hesla.
 create or replace function vytvor_odkaz(p_klient_id text, p_token_hash text, p_heslo text default null)
 returns uuid
-language plpgsql security invoker set search_path = public
+language plpgsql security invoker set search_path = public, extensions
 as $$
 declare v_id uuid;
 begin
@@ -30,7 +31,7 @@ end $$;
 -- Ověření hesla (volá edge funkce pod service rolí). Vrací true jen při shodě.
 create or replace function over_heslo(p_id uuid, p_heslo text)
 returns boolean
-language sql security definer set search_path = public
+language sql security definer set search_path = public, extensions
 as $$
   select exists (
     select 1 from klient_pristup
