@@ -70,9 +70,11 @@ await sTestovacimiKlienty(d, [ID], async () => {
   overit("nový odkaz téhož klienta není blokovaný", (await fn("klient_pristup", { token: t2, heslo: "jine-heslo" })).status === 200);
 
   // simulace uplynutí blokace: posunout blokovano_do do minulosti (jen v testu, přes REST jako tým)
-  await fetch(`${cfg.url}/rest/v1/klient_pristup?klient_id=eq.${ID}&token_hash=eq.${await sha(t1)}`, { method: "PATCH", headers: H,
-    body: JSON.stringify({ blokovano_do: new Date(Date.now() - 1000).toISOString(), aktivni: true }) });
+  // nejdřív zneplatnit t2 (jeden aktivní odkaz na klienta), pak vrátit t1 s blokací v minulosti
   await fetch(`${cfg.url}/rest/v1/klient_pristup?klient_id=eq.${ID}&token_hash=eq.${await sha(t2)}`, { method: "PATCH", headers: H, body: JSON.stringify({ aktivni: false }) });
+  const re = await fetch(`${cfg.url}/rest/v1/klient_pristup?klient_id=eq.${ID}&token_hash=eq.${await sha(t1)}`, { method: "PATCH", headers: H,
+    body: JSON.stringify({ blokovano_do: new Date(Date.now() - 1000).toISOString(), aktivni: true }) });
+  overit("příprava: t1 znovu aktivní s uplynulou blokací", re.ok, String(re.status));
   overit("po uplynutí blokace správné heslo zase projde", (await fn("klient_pristup", { token: t1, heslo: "tajne-1234" })).status === 200);
 });
 

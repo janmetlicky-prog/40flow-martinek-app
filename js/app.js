@@ -354,6 +354,7 @@ function renderDetail(c) {
           <button class="mode-toggle" id="formular-odkaz" hidden
              title="Zkopíruje odkaz na dotazník, který pošlete klientovi">Kopírovat odkaz pro klienta</button>
           <button class="mode-toggle" id="copy4fin-btn" title="Zobrazí všechna pole v pořadí formuláře 4fin, aby se daly rychle přenést do CRM">Kopírovat do 4fin</button>
+          <button class="mode-toggle" id="pdf-btn" title="Otevře tiskový pohled karty (základní údaje, kontakt, bilance, oblasti, dokumenty, cíle — bez komentářů a interních poznámek). V dialogu tisku zvolte ‚Uložit jako PDF‘.">Stáhnout PDF</button>
         </div>
       </div>
       <div id="odkaz-panel" class="odkaz-panel" hidden></div>
@@ -470,6 +471,7 @@ function renderDetail(c) {
       <div class="note-block"><label>Poznámky od Lenky</label>${esc(c.poznamky_lenka || "—")}</div>`;
 
   $("#back-btn").addEventListener("click", showListView);
+  $("#pdf-btn").addEventListener("click", () => stahniKartuJakoPdf(c, { ...CONFIG, dokumentyStavy: DOKUMENTY_CFG.stavy }));
   $("#formular-odkaz").addEventListener("click", async () => {
     const url = new URL(`onboarding.html?klient=${encodeURIComponent(c.id)}`, location.href).href;
     await navigator.clipboard.writeText(url);
