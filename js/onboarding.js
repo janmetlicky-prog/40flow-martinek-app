@@ -271,7 +271,7 @@ function dokumentyHtml() {
     if (REZIM_KLIENT) {
       const muzeNahrat = !d.ma_soubor && d.stav !== "nepotrebujeme";
       return `<div class="onb-dok-row" data-idx="${i}"><span>${esc(d.nazev)}</span>
-        <span>${d.ma_soubor ? `<span class="muted-small">nahráno, čeká na kontrolu</span>` : `<span class="muted-small">${esc((DOK_CFG.stavy || {})[d.stav] || d.stav)}</span>`}
+        <span>${d.ma_soubor && d.stav !== "dodano" ? `<span class="muted-small">nahráno, čeká na kontrolu</span>` : `<span class="muted-small">${esc((DOK_CFG.stavy || {})[d.stav] || d.stav)}</span>`}
         ${muzeNahrat ? ` <label class="onb-add-btn dok-nahrat-lbl">Nahrát<input type="file" class="dok-klient-nahrat" data-id="${esc(d.id || "")}" accept=".pdf,.jpg,.jpeg,.png,.heic" hidden></label>` : ""}</span>
       </div>`;
     }
