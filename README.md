@@ -76,6 +76,28 @@ done
 - Přehled ukazuje štítek „N nových dokumentů" = `nahral_klient and zobrazeno_kdy is null` (pohled `klienti_prehled`).
 - Test: `node tests/test_upload.mjs` (EXE v .pdf → 400, 20 MB → 413, cesta ve složce klienta, anon bez signed URL, smazaný se klientovi nevrací; uklízí i soubory v bucketu).
 
+### Odkaz pro klienta — jak funguje a co klient vidí
+
+Netechnicky, pro Petra: V kartě klienta je tlačítko **„Vytvořit odkaz pro klienta"**. Vznikne jednorázová adresa, kterou klientovi pošlete (SMS, e-mail). Klient na ní **nic nehledá a nikam se nepřihlašuje** — otevře se mu rovnou jeho vstupní dotazník s tím, co už o něm máte, a doplní zbytek: kontakt, adresy, osobní údaje, bilanci, smlouvy. Může nahrát dokumenty (foto dokladu, smlouvu). Nevidí nic z vaší práce: žádné komentáře, fáze, interní poznámky ani seznam smluv rozřazený do oblastí. Odkaz **platí 30 dní**, zobrazí se jen jednou (hned ho zkopírujte), a „Zneplatnit odkaz" ho kdykoli zruší. Jeden klient má vždy nejvýš jeden platný odkaz — nový ruší starý.
+
+Co se stane, když klient něco upraví: karta ukáže pruh **„Klient upravil N polí"** s výpisem starých a nových hodnot. Dokumenty od klienta mají stav *čeká na kontrolu* a v přehledu je u klienta štítek „N nových dokumentů". Na *dodáno* je přepíná jen poradce.
+
+**Heslo na odkaz (volitelné).** Před vytvořením zaškrtněte „Chránit odkaz heslem" a zadejte heslo (min. 4 znaky). Heslo klientovi sdělte jinou cestou než odkazem — telefonicky, SMS. Po vytvoření už ho nikde neuvidíte (v databázi je jen bcrypt hash, `klient_pristup.heslo_hash`). Klient při otevření odkazu nejdřív zadá heslo; po **3 špatných pokusech se odkaz na 15 minut zablokuje**. Blokace je vázaná na odkaz (token), ne na IP adresu — klient za firemní sítí tak neblokuje kolegy a naopak. Heslo se ověřuje jen na serveru (`over_heslo`, migrace `011`, volá ji jen edge funkce pod service rolí). Test: `node tests/test_heslo.mjs`.
+
+Technicky: tabulka `klient_pristup` (hash tokenu, platnost, heslo, počítadla), edge funkce `klient_pristup` (čtení), `klient_ulozit` (zápis jen povolených polí + záznam změn do `onboarding_zmeny`), `klient_upload` (soubory). Co klient smí měnit, určuje `ALLOWED_ONBOARDING` v `_shared/klient.ts` — nic jiného server nepřijme.
+
+### Fotky od klienta — komprese před nahráním
+
+Fotky dokladů z mobilu mívají 4–8 MB. Prohlížeč je před odesláním zmenší (`js/soubor.js` → `zkomprimujObrazek`): soubory nad 1,5 MB se přeškálují na max. 2000 px delší strany a uloží jako JPEG 85 %. Typicky 5 MB → 400–700 kB. PDF a soubory pod prahem se nemění. Platí pro klienta i tým. Limit 15 MB na serveru zůstává jako pojistka.
+
+### Stažení karty jako PDF
+
+Tlačítko **„Stáhnout PDF"** v kartě otevře tiskový pohled a dialog tisku — v něm zvolte „Uložit jako PDF". Obsah: základní údaje, kontakt, bilance, oblasti s položkami a fázemi, dokumenty se stavy, cíle. **Bez komentářů a interních poznámek** — PDF je určené pro klienta nebo do spisu. Záměrně se používá tisk prohlížeče místo knihovny (jsPDF apod.): systémové fonty zvládnou češtinu bez vkládání fontů (ověřeno na „Žluťoučký kůň"), výstup má textovou vrstvu a jde vyhledávat. Generátor je čistá funkce `sestavKartuProTisk` v `js/export_pdf.js` — jde otestovat bez prohlížeče.
+
+### Produktové oblasti navíc
+
+Kromě pěti základních (Život, Investice, Neživot, Úvěr, Úvěr na bydlení) existují **EUCS (likvidace pojistných událostí)**, **Podnikatelská rizika** a **Penze** (penzijní spoření; DIP zůstává v Investicích). V kartě se ukazují **jen když mají obsah** (stav, fázi nebo položku) — jinak by karta rostla do nekonečna. Smlouvy od klienta se do nich rozřazují podle `config/oblasti.json`, co nikam nesedí, končí v „Ostatní".
+
 > **CORS je zatím `*`** (`_shared/klient.ts` → `CORS`). Přístup chrání token, ne origin, takže to teď neblokuje. **Před ostrým provozem omezit na doménu aplikace** — jeden řádek, hodnota `Access-Control-Allow-Origin`.
 
 Rate limit: 20 volání za hodinu na jeden token (klouzavé okno v `klient_pristup.volani_pocet/volani_od`). Ověřuje test `tests/test_klient_pristup.mjs` reálně — 21 voláními.
@@ -108,6 +130,10 @@ Automatické testy (`node tests/run.mjs`) hlídají databázi. Tohle jsou věci,
 8. **Reload drží změnu** — změň fázi, ulož, zmáčkni F5. Změna tam musí být i po přenačtení (ne jen v paměti prohlížeče).
 9. **Dva taby** — otevři téhož klienta ve dvou oknech, ulož v obou. Druhý musí dostat hlášku o konfliktu, ne tiše přepsat kolegovu práci.
 10. **Varovný pruh** — na všech obrazovkách svítí „Testovací prostředí". Před ostrým provozem se vypíná v `config/app.json` (`testovaci_rezim: false`), ne mazáním kódu.
+11. **Formulář v obou režimech** — (a) jako poradce `?klient=<id>` z karty, (b) jako klient přes vygenerovaný odkaz v anonymním okně. V klientském režimu musí jít Pokračovat/Zpět po zadání hesla, klient nesmí vidět interní pole ani checklist dokumentů s přepínáním stavu.
+12. **Upload** — v klientském režimu nahraj JPG z mobilu (nad 1,5 MB): v kartě se objeví „čeká na kontrolu", velikost je po kompresi menší. Nahrání `.exe` přejmenovaného na `.pdf` server odmítne.
+13. **Heslo na odkaz** — vytvoř chráněný odkaz, otevři ho: bez hesla se formulář neukáže, špatné heslo hlásí zbývající pokusy, správné pustí dál.
+14. **PDF** — „Stáhnout PDF" otevře tiskový náhled s diakritikou v pořádku; v náhledu nejsou komentáře.
 
 ## Testy
 
@@ -115,6 +141,9 @@ Automatické testy (`node tests/run.mjs`) hlídají databázi. Tohle jsou věci,
 node tests/run.mjs                  # vše
 node tests/test_neuplny_zapis.mjs   # po každé změně save_klient
 node tests/test_dva_taby.mjs        # po každé změně zámku proti přepsání
+node tests/test_klient_pristup.mjs  # token, omezení polí, rate limit (reálných 21 volání)
+node tests/test_upload.mjs          # magic bytes, limit, cesta ve složce klienta
+node tests/test_heslo.mjs           # heslo na odkaz, blokace po 3 pokusech
 ```
 
 Testy běží proti živé databázi jako přihlášený uživatel, takže procházejí i politikami RLS — stejnou cestou jako aplikace. Potřebují `.env` se service klíčem (přihlášení testovacího uživatele) a vyplněný `config/app.json`.
@@ -151,7 +180,7 @@ Systém je schválně postavený tak, aby ho šlo převzít celý, bez nás.
 
 Otevři si odkaz, který jsem ti poslal, a přihlas se svým e-mailem a heslem, které máš ode mě v samostatné zprávě. Nic si nikam neinstaluješ a nic nenastavuješ — všechno běží v prohlížeči. Systém je zatím testovací: klienti, které uvidíš, jsou vymyšlení (Adam Testovací, Alena Zkušební a další) a všechno, co v něm naklikáš, zůstává jen v tvém prohlížeči. Proto tam prosím nevkládej žádné skutečné údaje o klientech — nahoře na to upozorňuje žlutý pruh.
 
-Projdi si to takhle: v přehledu klientů zkus hledání a filtry, pak klikni na kteréhokoli klienta. V jeho kartě rozklikni produktovou oblast (Život, Investice, Úvěr…) — uvidíš fázi rozpracovanosti, poznámku a seznam smluv, všechno se dá měnit. Níž v kartě je místo na komentáře (třeba „volal jsem třikrát, nebere"), historie schůzek, odkaz na investiční dotazník a časová osa cílů. Nakonec zkus vpravo nahoře tlačítko „Kopírovat do 4fin" — vypíše všechna pole v tom pořadí, jak je máte ve 4finu, a u každého je tlačítko na zkopírování. Změny se ukládají tlačítkem „Uložit" v pruhu dole. Nového člověka založíš tlačítkem „+ Nový klient" nad tabulkou — stačí příjmení, karta se otevře hned a v ní je tlačítko „Vyplnit vstupní formulář" pro schůzku bez Plaudu. Samostatně se pak podívej na vstupní dotazník (v kartě „Kopírovat odkaz pro klienta") — to je formulář, který dostane klient odkazem a vyplní si ho sám.
+Projdi si to takhle: v přehledu klientů zkus hledání a filtry, pak klikni na kteréhokoli klienta. V jeho kartě rozklikni produktovou oblast (Život, Investice, Úvěr…) — uvidíš fázi rozpracovanosti, poznámku a seznam smluv, všechno se dá měnit. Níž v kartě je místo na komentáře (třeba „volal jsem třikrát, nebere"), historie schůzek, odkaz na investiční dotazník a časová osa cílů. Nakonec zkus vpravo nahoře tlačítko „Kopírovat do 4fin" — vypíše všechna pole v tom pořadí, jak je máte ve 4finu, a u každého je tlačítko na zkopírování. Změny se ukládají tlačítkem „Uložit" v pruhu dole. Nového člověka založíš tlačítkem „+ Nový klient" nad tabulkou — stačí příjmení, karta se otevře hned a v ní je tlačítko „Vyplnit vstupní formulář" pro schůzku bez Plaudu. Samostatně se pak podívej na vstupní dotazník: v kartě „Vytvořit odkaz pro klienta" (klidně s heslem), odkaz otevři v anonymním okně — tohle uvidí klient a vyplní si sám, včetně nahrání fotky dokladu. Nakonec zkus „Stáhnout PDF" — výpis karty bez interních poznámek, třeba pro klienta nebo do spisu.
 
 Zpětnou vazbu posílej prosím po obrazovkách: udělej screenshot a napiš k němu „tady doplnit…" nebo „tady bych to měl jinak…". Nejvíc mi pomůže, když u každé obrazovky zvlášť označíš, **která pole má vidět a vyplňovat klient a která jen tvůj tým** — to je jediné, co potřebuju vědět dřív, než se to napojí na ostrou databázi. Klidně posílej i drobnosti, které ti přijdou hloupé (špatný název pole, nejasné tlačítko) — přesně ty teď hledám.
 
@@ -161,20 +190,22 @@ Vizuál „Bohatněte s rozumem": černý text (`--ink`), žlutý kruhový akcen
 
 ## Onboarding — dvoudílný podle toho, kdo data zadává
 
-**Klientský formulář** (`onboarding.html`) — odkaz posílá poradce klientovi po schůzce, ideálně s parametrem `?klient=<id>` pro automatické spárování. Sbírá jen to, co klient sám dodává: kontakt (telefon, e-mail, adresy), osobní údaje (rodinný stav, povolání, zdroj příjmů), finanční bilanci po položkách (příjmy / výdaje / závazky), aktivní smlouvy a nahrání dokumentů (max 5 MB/soubor, ukládají se do JSON jako base64). Wizard 5 sekcí s ukazatelem postupu, rozpracované uložení do localStorage („Uložit a dokončit později") a návrat ve stejném prohlížeči. Validace e-mailu a telefonu.
+**Klientský formulář** (`onboarding.html`) — odkaz posílá poradce klientovi po schůzce, ideálně s parametrem `?klient=<id>` pro automatické spárování. Sbírá jen to, co klient sám dodává: kontakt (telefon, e-mail, adresy), osobní údaje (rodinný stav, povolání, zdroj příjmů), finanční bilanci po položkách (příjmy / výdaje / závazky), aktivní smlouvy a nahrání dokumentů (do 15 MB/soubor, do privátního bucketu — viz „Dokumenty"). Druhý krok sbírá i partnera, počet a věk dětí, povolání a zaměstnavatele (karta → „Základní údaje"). Tlačítko „Zpět" je velké vedle „Pokračovat", ne schované pod formulářem. Wizard 5 sekcí s ukazatelem postupu, rozpracované uložení do localStorage („Uložit a dokončit později") a návrat ve stejném prohlížeči. Validace e-mailu a telefonu.
 
 **Do klientského formuláře záměrně NEPATŘÍ:** rodné číslo, číslo a platnost dokladu, bankovní účet, segmentace, daňové rezidentství, AML údaje. Ty vyplňuje poradce v kartě klienta — sekce **„Údaje doplňované poradcem"** (editovatelná přímo v kartě, ukládá se s ostatními změnami).
 
 Karta klienta zobrazuje obojí, vizuálně odlišené: žlutá linka + štítek „vyplnil klient" vs. černá linka + štítek „doplňuje poradce".
 
-Tok dat: klient vyplní → stáhne JSON → pošle poradci → admin v dashboardu „Nahrát onboarding" → záznam se připojí k existujícímu klientovi podle `klient_id`, jinak vznikne nový.
+Tok dat (Supabase): klient vyplní přes odkaz s tokenem → `klient_ulozit` zapíše do karty a zaloguje změny → poradce v kartě vidí „Klient upravil N polí". Stažení JSON zůstává jako záloha pro režim bez úložiště.
 
 V kartě klienta je režim **„Kopírovat do 4fin"** — všechna pole přesně v pořadí formuláře CRM 4fin (kombinuje základní kartu, klientský formulář i data od poradce, u každého pole původ), každé s tlačítkem kopírování do schránky. API napojení na 4fin není — tenhle režim ruční přepis maximálně zkracuje.
 
 ```
 index.html              SPA — login, přehled klientů, karta klienta
 onboarding.html         klientský vstupní dotazník (wizard)
-js/onboarding.js        logika formuláře + validace
+js/onboarding.js        logika formuláře + validace (režim poradce i klient)
+js/export_pdf.js        karta klienta → tiskový pohled / PDF
+js/soubor.js            kontrola typu souboru, komprese fotek
 css/style.css           styly; brand barvy jako CSS proměnné v :root
 js/config.js            uživatelé, GitHub repo, produktové stavy
 js/app.js               aplikační logika
