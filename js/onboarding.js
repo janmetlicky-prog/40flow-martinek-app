@@ -712,12 +712,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     const zkus = async () => {
       klientHeslo = $("#klient-heslo-input").value;
       try { sessionStorage.setItem(HESLO_KEY, klientHeslo); } catch { /* noop */ }
-      if (await nactiKlientskyRezim()) { $("#onb-form").hidden = false; $("#progress").hidden = false; $("#progress-label").hidden = false; renderStep(); }
+      if (await nactiKlientskyRezim()) { $("#onb-form").hidden = false; $("#progress").hidden = false; $("#progress-label").hidden = false; dokonciInit(); }
     };
     $("#klient-heslo-btn").addEventListener("click", zkus);
     $("#klient-heslo-input").addEventListener("keydown", (e) => { if (e.key === "Enter") zkus(); });
-    if (!(Storage.klientPristup) || !(await nactiKlientskyRezim())) return;   // neplatný odkaz / heslo: nic dalšího
+    if (!(Storage.klientPristup) || !(await nactiKlientskyRezim())) return;   // neplatný odkaz / heslo: čeká se na heslo (zkus → dokonciInit) nebo konec
   }
+  await dokonciInit();
+});
+
+/**
+ * Druhá půlka initu: předvyplnění, draft, navigace a tlačítka. Volá se jednou —
+ * buď rovnou, nebo až po správně zadaném heslu (do té doby formulář není vidět
+ * a tlačítka nesmí být navázaná dvakrát).
+ */
+let initDokoncen = false;
+async function dokonciInit() {
+  if (initDokoncen) return;
+  initDokoncen = true;
   // Režim poradce: předvyplnit z karty (upravit existující dotazník)
   if (!REZIM_KLIENT && KLIENT_ID && Storage.umiZapisovat && Storage.umiZapisovat()) {
     try {
@@ -776,4 +788,4 @@ document.addEventListener("DOMContentLoaded", async () => {
     a.click();
     URL.revokeObjectURL(a.href);
   });
-});
+}
