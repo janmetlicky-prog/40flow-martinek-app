@@ -67,6 +67,15 @@ done
 
 `--no-verify-jwt` je záměr: klient nemá účet, ověřuje se tokenem z odkazu (SHA-256 v `klient_pristup`). Bez toho by funkce vyžadovaly přihlášení.
 
+### Dokumenty — jak funguje upload a kontrola typu
+
+- Bucket `dokumenty` je **privátní**. Soubory leží pod `<klient_id>/<uuid>-<bezpečný-název>`; název se odvozuje z obsahu (přípona podle rozpoznaného typu), diakritika a mezery se nahradí.
+- **Typ se posuzuje z obsahu souboru (magic bytes), ne z přípony ani Content-Type.** `%PDF-` → PDF, `FF D8 FF` → JPG, `89 50 4E 47…` → PNG, ISO-BMFF `ftyp` + brand `heic/heix/mif1…` → HEIC. Soubor `faktura.pdf` s obsahem EXE server odmítne (`400`). Max 15 MB (`413`). Stejná kontrola běží i v prohlížeči (`js/soubor.js`), ale jen kvůli rychlé hlášce — rozhoduje server (`supabase/functions/_shared/soubor.ts`).
+- **Klient** nahrává přes edge funkci `klient_upload` (multipart: `token`, `soubor`, volitelně `dokument_id`). Složka je odvozená z tokenu, klient ji nemůže zvolit. Řádek v `dokumenty` dostane `nahral_klient = true`, `stav = ceka_na_kontrolu`. Klient nikdy nedostane URL ke stažení — vidí jen „nahráno, čeká na kontrolu". Signed upload URL se záměrně nepoužívá: má pevnou platnost 2 h a obsah by šlo ověřit až po nahrání.
+- **Tým** nahrává přímo do bucketu (RLS na `storage.objects`: `select/insert/update` jen `je_tym()`, `delete` jen admin, anon nic) a řádek uloží s kartou přes `save_klient`. „Otevřít" = signed URL na 60 minut; u souboru od klienta se tím zapíše `zobrazeno_kdy`. „Smazat" je měkké (`smazano`), soubor v bucketu zůstává — retence se řeší zvlášť.
+- Přehled ukazuje štítek „N nových dokumentů" = `nahral_klient and zobrazeno_kdy is null` (pohled `klienti_prehled`).
+- Test: `node tests/test_upload.mjs` (EXE v .pdf → 400, 20 MB → 413, cesta ve složce klienta, anon bez signed URL, smazaný se klientovi nevrací; uklízí i soubory v bucketu).
+
 > **CORS je zatím `*`** (`_shared/klient.ts` → `CORS`). Přístup chrání token, ne origin, takže to teď neblokuje. **Před ostrým provozem omezit na doménu aplikace** — jeden řádek, hodnota `Access-Control-Allow-Origin`.
 
 Rate limit: 20 volání za hodinu na jeden token (klouzavé okno v `klient_pristup.volani_pocet/volani_od`). Ověřuje test `tests/test_klient_pristup.mjs` reálně — 21 voláními.
