@@ -269,8 +269,11 @@ function dokumentyHtml() {
     const opts = stavy.map(([k, v]) => `<option value="${k}" ${d.stav === k ? "selected" : ""}>${esc(v)}</option>`).join("");
     const zamek = d.stav === "ceka_na_kontrolu" ? `<option value="ceka_na_kontrolu" selected>${esc(DOK_CFG.stavy.ceka_na_kontrolu)}</option>` : "";
     if (REZIM_KLIENT) {
+      const muzeNahrat = !d.ma_soubor && d.stav !== "nepotrebujeme";
       return `<div class="onb-dok-row" data-idx="${i}"><span>${esc(d.nazev)}</span>
-        <span class="muted-small">${esc((DOK_CFG.stavy || {})[d.stav] || d.stav)}</span></div>`;
+        <span>${d.ma_soubor ? `<span class="muted-small">nahráno, čeká na kontrolu</span>` : `<span class="muted-small">${esc((DOK_CFG.stavy || {})[d.stav] || d.stav)}</span>`}
+        ${muzeNahrat ? ` <label class="onb-add-btn dok-nahrat-lbl">Nahrát<input type="file" class="dok-klient-nahrat" data-id="${esc(d.id || "")}" accept=".pdf,.jpg,.jpeg,.png,.heic" hidden></label>` : ""}</span>
+      </div>`;
     }
     return `<div class="onb-dok-row" data-idx="${i}">
       <span>${esc(d.nazev)}${d.checklist_klic ? "" : `<span class="dok-vlastni">vlastní</span>`}</span>
@@ -278,7 +281,12 @@ function dokumentyHtml() {
         ${d.checklist_klic ? "" : `<button type="button" class="item-del dok-del" title="Odebrat">×</button>`}</span>
     </div>`;
   }).join("");
-  if (REZIM_KLIENT) return rows || `<p class="muted-small">Zatím žádné dokumenty k dodání.</p>`;
+  if (REZIM_KLIENT) return `${rows || `<p class="muted-small">Zatím žádné dokumenty k dodání.</p>`}
+    <div class="dok-add-row" style="margin-top:12px">
+      <label class="onb-add-btn dok-nahrat-lbl">Nahrát jiný dokument<input type="file" class="dok-klient-nahrat" data-id="" accept=".pdf,.jpg,.jpeg,.png,.heic" hidden></label>
+      <span class="muted-small">PDF, JPG, PNG nebo HEIC do 15 MB.</span>
+    </div>
+    <div class="err" id="dok-klient-chyba"></div>`;
   return `${rows}
     <div class="dok-add-row" style="margin-top:12px">
       <input id="dok-novy" placeholder="další dokument, např. smlouva o dílo">
@@ -355,6 +363,25 @@ function bindStepEvents(s) {
       collectStep();
       data.smlouvy.splice(Number(btn.closest(".onb-smlouva").dataset.idx), 1);
       renderStep();
+    }));
+  }
+  if (s.type === "dokumenty" && REZIM_KLIENT) {
+    document.querySelectorAll(".dok-klient-nahrat").forEach((inp) => inp.addEventListener("change", async (e) => {
+      const f = e.target.files[0]; e.target.value = "";
+      if (!f) return;
+      const err = $("#dok-klient-chyba"); err.textContent = "";
+      const chyba = await overSoubor(f);
+      if (chyba) { err.textContent = chyba; return; }
+      err.textContent = `Nahrávám ${f.name}…`;
+      try {
+        await Storage.klientUpload(KLIENT_TOKEN, f, { dokument_id: inp.dataset.id });
+        // obnovit seznam z serveru, ať sedí stavy
+        const d2 = await Storage.klientPristup(KLIENT_TOKEN);
+        klientDokumenty = d2.dokumenty.map((x) => ({ ...x, checklist_klic: "", jenCteni: true }));
+        data.dokumenty = klientDokumenty;
+        renderStep();
+        $("#dok-klient-chyba").textContent = `Nahráno: ${f.name}. Poradce soubor zkontroluje.`;
+      } catch (ex) { err.textContent = ex.message; }
     }));
   }
   if (s.type === "dokumenty" && !REZIM_KLIENT) {

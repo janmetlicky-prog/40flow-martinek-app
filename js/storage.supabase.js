@@ -66,6 +66,7 @@ class SupabaseStorage {
       stav_retence: r.stav,
       obchodnik: r.obchodnik || "",
       oblasti: r.oblasti || {},
+      nove_dokumenty: Number(r.nove_dokumenty || 0),
       upraveno: r.upraveno,
     }));
   }
@@ -162,6 +163,62 @@ class SupabaseStorage {
   }
   klientPristup(token) { return this._fn("klient_pristup", { token }); }
   klientUlozit(token, onboarding) { return this._fn("klient_ulozit", { token, onboarding }); }
+
+  /** Klient nahrává přes edge funkci (multipart) — server rozhoduje o typu i velikosti. */
+  async klientUpload(token, file, { checklist_klic = "", dokument_id = "" } = {}) {
+    const fd = new FormData();
+    fd.append("token", token); fd.append("soubor", file, file.name);
+    if (checklist_klic) fd.append("checklist_klic", checklist_klic);
+    if (dokument_id) fd.append("dokument_id", dokument_id);
+    let r;
+    try { r = await fetch(`${this.url}/functions/v1/klient_upload`, { method: "POST", body: fd }); }
+    catch { throw new StorageError("offline", "Nelze se připojit — zkontrolujte internetové připojení."); }
+    const telo = await r.json().catch(() => ({}));
+    if (r.status === 401) throw new StorageError("neplatny_odkaz", "Odkaz není platný nebo vypršel. Požádejte svého poradce o nový.");
+    if (r.status === 413) throw new StorageError("velikost", `Soubor je větší než ${telo.max_mb || 15} MB.`);
+    if (r.status === 400 && telo.chyba === "typ") throw new StorageError("typ", "Povolené jsou jen PDF, JPG, PNG a HEIC (posuzuje se obsah souboru, ne přípona).");
+    if (r.status === 429) throw new StorageError("limit", "Příliš mnoho pokusů. Zkuste to prosím za hodinu.");
+    if (!r.ok) throw new StorageError("chyba", "Nahrání se nezdařilo. Zkuste to prosím znovu.");
+    return telo;
+  }
+
+  // --- soubory pro tým (přihlášen, RLS na storage.objects) ------------------
+  _storageHlavicky() {
+    const t = Auth.token();
+    if (!t) throw new StorageError("neprihlasen", "Nejste přihlášeni. Přihlaste se prosím znovu.");
+    return { apikey: this.anon, Authorization: `Bearer ${t}` };
+  }
+
+  /** Nahraje soubor do bucketu a vrátí {storage_path, mime, velikost}. Řádek se zapíše přes saveClient. */
+  async nahrajSoubor(klientId, file) {
+    const typ = await rozpoznejTypSouboru(file);
+    if (!typ) throw new StorageError("typ", "Povolené jsou jen PDF, JPG, PNG a HEIC (posuzuje se obsah souboru, ne přípona).");
+    if (file.size > SOUBOR_MAX_MB * 1024 * 1024) throw new StorageError("velikost", `Soubor je větší než ${SOUBOR_MAX_MB} MB.`);
+    const cesta = `${klientId}/${crypto.randomUUID()}-${bezpecnyNazevSouboru(file.name, typ.pripona)}`;
+    let r;
+    try {
+      r = await fetch(`${this.url}/storage/v1/object/dokumenty/${cesta}`, {
+        method: "POST", headers: { ...this._storageHlavicky(), "Content-Type": typ.mime, "x-upsert": "false" }, body: file,
+      });
+    } catch { throw new StorageError("offline", "Nelze se připojit — zkontrolujte internetové připojení."); }
+    if (r.status === 401 || r.status === 403) throw new StorageError("neopravnen", "Nemáte oprávnění nahrávat dokumenty.");
+    if (!r.ok) throw new StorageError("chyba", `Nahrání se nezdařilo (${r.status}).`);
+    return { storage_path: cesta, mime: typ.mime, velikost: file.size };
+  }
+
+  /** Odkaz ke stažení platný 60 minut. Jen pro přihlášený tým. */
+  async odkazNaSoubor(storagePath) {
+    let r;
+    try {
+      r = await fetch(`${this.url}/storage/v1/object/sign/dokumenty/${storagePath}`, {
+        method: "POST", headers: { ...this._storageHlavicky(), "Content-Type": "application/json" },
+        body: JSON.stringify({ expiresIn: 3600 }),
+      });
+    } catch { throw new StorageError("offline", "Nelze se připojit — zkontrolujte internetové připojení."); }
+    if (!r.ok) throw new StorageError("chyba", `Soubor se nepodařilo otevřít (${r.status}).`);
+    const { signedURL } = await r.json();
+    return `${this.url}/storage/v1${signedURL}`;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -263,6 +320,7 @@ function doTabulek(c, kdo) {
     ...(Array.isArray(c.dokumenty) ? { dokumenty: c.dokumenty.map((d) => ({
       id: d.id || "", nazev: d.nazev || "", typ: d.typ || "", stav: d.stav || "",
       checklist_klic: d.checklist_klic || "",
+      storage_path: d.storage_path || "", mime: d.mime || "", velikost: d.velikost != null ? String(d.velikost) : "",
       smazano: d.smazano === true ? "true" : "", zobrazeno: d.zobrazeno === true ? "true" : "",
     })) } : {}),
     upravil: kdo || "",

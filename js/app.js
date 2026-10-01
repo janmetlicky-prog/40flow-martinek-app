@@ -233,7 +233,7 @@ function renderList() {
   $("#result-count").textContent = `${rows.length} z ${INDEX.length} klientů`;
   $("#client-rows").innerHTML = rows.map((c) => `
     <tr data-id="${c.id}">
-      <td><span class="name">${esc(c.jmeno)} ${esc(c.prijmeni)}</span></td>
+      <td><span class="name">${esc(c.jmeno)} ${esc(c.prijmeni)}</span>${c.nove_dokumenty ? ` <span class="badge nove" title="Dokumenty od klienta, které tým ještě neotevřel">${c.nove_dokumenty} ${c.nove_dokumenty === 1 ? "nový dokument" : c.nove_dokumenty < 5 ? "nové dokumenty" : "nových dokumentů"}</span>` : ""}</td>
       <td class="muted">${esc(c.firma || "")}</td>
       <td class="muted">${esc(c.stav || "")}</td>
       <td class="muted">${esc(c.obchodnik || "")}</td>
@@ -659,6 +659,27 @@ function renderDetail(c) {
       renderDetail(c);
     });
   });
+  document.querySelectorAll(".dok-nahrat").forEach((inp) => {
+    inp.addEventListener("change", (e) => {
+      const f = e.target.files[0];
+      if (f) nahrajDokumentTymu(c, f, Number(inp.dataset.idx));
+      e.target.value = "";
+    });
+  });
+  document.querySelectorAll(".dok-otevrit").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const d = c.dokumenty[Number(btn.dataset.idx)];
+      try {
+        const url = await Storage.odkazNaSoubor(d.storage_path);
+        window.open(url, "_blank", "noopener");
+        if (d.nahral_klient && !d.zobrazeno_kdy) {
+          d.zobrazeno = true; d.zobrazeno_kdy = new Date().toISOString();   // od klienta → označit jako prohlédnuté
+          markDirty(c.id); await saveAll();
+          CLIENTS.delete(c.id); await openDetail(c.id);
+        }
+      } catch (err) { showError(err); }
+    });
+  });
   $("#dok-add")?.addEventListener("click", () => {
     const nazev = $("#dok-novy").value.trim();
     if (!nazev) return;
@@ -859,7 +880,9 @@ function renderDokumenty(c) {
       `<option value="${k}" ${d.stav === k ? "selected" : ""} ${k === "ceka_na_kontrolu" && d.stav !== k ? "disabled" : ""}>${esc(v)}</option>`).join("");
     const kdo = d.nahral_klient ? `<span class="src-badge client">klient</span>` : esc(d.nahral_jmeno || "");
     const nove = d.nahral_klient && !d.zobrazeno_kdy ? ` <span class="badge nove">nové</span>` : "";
-    const soubor = d.storage_path ? `<button class="onb-add-btn dok-otevrit" data-idx="${i}">Otevřít</button>` : `<span class="muted-small">bez souboru</span>`;
+    const soubor = d.storage_path
+      ? `<button class="onb-add-btn dok-otevrit" data-idx="${i}">Otevřít</button>`
+      : `<label class="onb-add-btn dok-nahrat-lbl" title="Nahrát soubor k této položce">Nahrát<input type="file" class="dok-nahrat" data-idx="${i}" accept=".pdf,.jpg,.jpeg,.png,.heic" hidden></label>`;
     return `<tr>
       <td>${esc(d.nazev)}${nove}</td>
       <td><select class="dok-stav" data-idx="${i}">${opts}</select></td>
@@ -877,7 +900,31 @@ function renderDokumenty(c) {
       <input id="dok-novy" placeholder="vlastní položka, např. smlouva o dílo">
       <button id="dok-add" class="onb-add-btn">+ Přidat položku</button>
     </div>
-    <p class="muted-small">Nahrávání souborů přijde v dalším kroku; teď se eviduje jen stav.</p>`;
+    <div class="dok-add-row">
+      <label class="onb-add-btn dok-nahrat-lbl">Nahrát soubor mimo seznam<input type="file" class="dok-nahrat" data-idx="-1" accept=".pdf,.jpg,.jpeg,.png,.heic" hidden></label>
+      <span class="muted-small">PDF, JPG, PNG, HEIC do 15 MB. Otevření souboru od klienta ho označí jako prohlédnutý.</span>
+    </div>`;
+}
+
+/** Tým nahrává přímo do bucketu; řádek se uloží s kartou. */
+async function nahrajDokumentTymu(c, file, idx) {
+  if (!Storage.nahrajSoubor) { showError(new Error("Nahrávání souborů funguje jen v ostrém režimu.")); return; }
+  const chyba = await overSoubor(file);
+  if (chyba) { showError(new Error(chyba)); return; }
+  $("#save-status").textContent = `Nahrávám ${file.name}…`;
+  try {
+    const meta = await Storage.nahrajSoubor(c.id, file);
+    if (idx >= 0 && c.dokumenty[idx]) {
+      Object.assign(c.dokumenty[idx], meta, { nahral_jmeno: session.jmeno || "", kdy: new Date().toISOString() });
+    } else {
+      c.dokumenty.push({ checklist_klic: "", nazev: file.name, stav: "dodano", ...meta, nahral_jmeno: session.jmeno || "", kdy: new Date().toISOString() });
+    }
+    markDirty(c.id);
+    await saveAll();                       // řádek i cesta hned v databázi, ať se soubor „neztratí"
+    CLIENTS.delete(c.id);
+    await openDetail(c.id);
+    $("#save-status").textContent = `Nahráno: ${file.name} ✓`;
+  } catch (err) { showError(err); $("#save-status").textContent = ""; }
 }
 
 function renderAdvisorFields(c) {

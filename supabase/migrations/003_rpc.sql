@@ -149,14 +149,24 @@ begin
         nazev          = coalesce(v_zaznam->>'nazev', nazev),
         stav           = coalesce(nullif(v_zaznam->>'stav', ''), stav),
         checklist_klic = coalesce(v_zaznam->>'checklist_klic', checklist_klic),
+        -- poradce doplnil soubor k existující položce
+        storage_path   = coalesce(nullif(v_zaznam->>'storage_path', ''), storage_path),
+        mime           = coalesce(nullif(v_zaznam->>'mime', ''), mime),
+        velikost       = coalesce(nullif(v_zaznam->>'velikost', '')::bigint, velikost),
+        nahral         = case when nullif(v_zaznam->>'storage_path', '') is not null then auth.uid() else nahral end,
+        kdy            = case when nullif(v_zaznam->>'storage_path', '') is not null then now() else kdy end,
         smazano        = case when (v_zaznam->>'smazano') = 'true' then coalesce(smazano, now()) else smazano end,
         zobrazeno_kdy  = case when (v_zaznam->>'zobrazeno') = 'true' then coalesce(zobrazeno_kdy, now()) else zobrazeno_kdy end
       where id = (v_zaznam->>'id')::uuid and klient_id = v_id;
     else
-      insert into dokumenty (klient_id, nazev, typ, stav, checklist_klic, nahral)
+      -- nová položka checklistu, nebo soubor nahraný poradcem (má storage_path)
+      insert into dokumenty (klient_id, nazev, typ, stav, checklist_klic, nahral,
+                             storage_path, mime, velikost, nahral_klient)
       values (v_id, coalesce(v_zaznam->>'nazev', ''), coalesce(v_zaznam->>'typ', ''),
               coalesce(nullif(v_zaznam->>'stav', ''), 'nedodano'),
-              coalesce(v_zaznam->>'checklist_klic', ''), auth.uid());
+              coalesce(v_zaznam->>'checklist_klic', ''), auth.uid(),
+              coalesce(v_zaznam->>'storage_path', ''), coalesce(v_zaznam->>'mime', ''),
+              nullif(v_zaznam->>'velikost', '')::bigint, false);
     end if;
   end loop;
 
